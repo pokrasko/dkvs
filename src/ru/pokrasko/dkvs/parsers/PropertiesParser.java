@@ -1,4 +1,6 @@
-package ru.pokrasko.dkvs;
+package ru.pokrasko.dkvs.parsers;
+
+import ru.pokrasko.dkvs.Properties;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -8,17 +10,17 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-class PropertiesParser {
+public class PropertiesParser {
     private BufferedReader reader;
-    private String line;
+    private String line = "";
     private int tokenBegin;
     private int curIndex;
 
-    PropertiesParser(File propertiesFile) throws FileNotFoundException {
+    public PropertiesParser(File propertiesFile) throws FileNotFoundException {
         reader = new BufferedReader(new FileReader(propertiesFile));
     }
 
-    Properties parse() throws ParseException {
+    public Properties parse() throws ParseException {
         String firstWord;
         List<InetSocketAddress> serverAddresses = new ArrayList<>();
         int timeout;

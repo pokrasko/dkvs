@@ -1,5 +1,7 @@
 package ru.pokrasko.dkvs;
 
+import ru.pokrasko.dkvs.parsers.PropertiesParser;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.net.URL;
@@ -15,7 +17,7 @@ public class Main {
         }
 
         PropertiesParser propertiesParser;
-        if (args[1] != null) {
+        if (args.length > 1 && args[1] != null) {
             File propertiesFile = new File(args[1]);
             propertiesParser = getPropertiesParser(propertiesFile);
         } else {
@@ -35,10 +37,11 @@ public class Main {
         try {
             properties = propertiesParser.parse();
         } catch (ParseException e) {
-            System.err.println("Properties parser exception at symbol " + e.getErrorOffset() + ": " + e.getMessage());
+            System.err.println("Properties parser exception at symbol " + (e.getErrorOffset() + 1) + ": "
+                    + e.getMessage());
             return;
         }
-        new Server(id, properties).run();
+        new Server(id - 1, properties).run();
     }
 
     private static PropertiesParser getPropertiesParser(File propertiesFile) {
