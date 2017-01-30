@@ -1,5 +1,6 @@
 package ru.pokrasko.dkvs;
 
+import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.runnables.SocketAccepter;
 import ru.pokrasko.dkvs.runnables.SocketConnecter;
 
@@ -58,6 +59,10 @@ public class Server {
 
     public InetSocketAddress getServerAddress(int id) {
         return properties.getServerAddress(id);
+    }
+
+    public int getTimeout() {
+        return properties.getTimeout();
     }
 
     public boolean getConnectedIn(int id) {

@@ -55,6 +55,8 @@ public class PropertiesParser {
         }
         if (timeout <= 0) {
             throw new ParseException("Timeout should be larger than 0 but is " + timeout, tokenBegin);
+        } else if (timeout > 1000000000) {
+            throw new ParseException("Timeout should be less than 1000000000 but is " + timeout, tokenBegin);
         }
 
         return new Properties(serverAddresses, timeout);

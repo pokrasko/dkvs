@@ -1,6 +1,8 @@
 package ru.pokrasko.dkvs.runnables;
 
+import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.Server;
+import ru.pokrasko.dkvs.messages.PingMessage;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -32,7 +34,12 @@ public class SocketConnecter implements Runnable {
                 server.setConnectedOut(thatId, true);
 
                 while (!writer.checkError()) {
-                    writer.println(server.getOutgoingMessage().toString());
+                    Message message = server.getOutgoingMessage();
+                    if (message != null) {
+                        writer.println(message);
+                    } else {
+                        writer.println(new PingMessage());
+                    }
                 }
             } catch (IOException e) {
                 System.out.println("Couldn't connect from server #" + server.getId() + " to server #" + (thatId + 1)

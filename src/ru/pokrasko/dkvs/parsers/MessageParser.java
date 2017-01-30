@@ -1,6 +1,6 @@
 package ru.pokrasko.dkvs.parsers;
 
-import ru.pokrasko.dkvs.Message;
+import ru.pokrasko.dkvs.messages.Message;
 
 public class MessageParser {
     public Message parse(String line) {

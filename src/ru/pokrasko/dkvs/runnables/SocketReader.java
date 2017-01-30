@@ -19,6 +19,7 @@ class SocketReader implements Runnable {
     SocketReader(Server server, Socket socket) throws IOException {
         this.server = server;
         this.socket = socket;
+        this.socket.setSoTimeout(server.getTimeout());
         this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         this.messageParser = new MessageParser();
     }
