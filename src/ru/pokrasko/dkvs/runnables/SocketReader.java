@@ -44,9 +44,11 @@ class SocketReader implements Runnable {
                     return;
                 }
                 server.putIncomingMessage(messageParser.parse(line));
+            } catch (InterruptedException e) {
+                break;
             } catch (IOException e) {
                 System.err.println("Couldn't read a line (" + e.getMessage() + ")");
-                return;
+                break;
             } finally {
                 server.setConnectedIn(id, false);
                 try {

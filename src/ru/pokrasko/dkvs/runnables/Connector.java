@@ -38,19 +38,10 @@ public class Connector implements Runnable {
                     if (message != null) {
                         writer.println(message);
                     } else {
-                        try {
-                            Thread.sleep(server.getTimeout() / 2);
-                        } catch (InterruptedException e) {
-                            return;
-                        }
-                        message = server.getOutgoingMessage();
-                        if (message != null) {
-                            writer.println(message);
-                        } else {
-                            writer.println(new PingMessage());
-                        }
+                        writer.println(new PingMessage());
                     }
                 }
+            } catch (InterruptedException ignored) {
             } catch (IOException e) {
                 System.out.println("Couldn't connect from server #" + server.getId() + " to server #" + (thatId + 1)
                         + " (" + e.getMessage() + ")");

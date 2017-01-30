@@ -5,13 +5,13 @@ import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.messages.PingMessage;
 import ru.pokrasko.dkvs.messages.PongMessage;
 
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class Processor implements Runnable {
-    private ConcurrentLinkedQueue<Message> in;
-    private ConcurrentLinkedQueue<Message> out;
+    private BlockingQueue<Message> in;
+    private BlockingQueue<Message> out;
 
-    public Processor(ConcurrentLinkedQueue<Message> in, ConcurrentLinkedQueue<Message> out) {
+    public Processor(BlockingQueue<Message> in, BlockingQueue<Message> out) {
         this.in = in;
         this.out = out;
     }
@@ -19,15 +19,14 @@ public class Processor implements Runnable {
     @Override
     public void run() {
         while (!Thread.interrupted()) {
-            Message message = in.poll();
-            if (message == null) {
-                try {
-                    Thread.sleep(Main.SLEEP_TIMEOUT);
-                } catch (InterruptedException e) {
-                    return;
+            try {
+                Message message = in.take();
+
+                if (message instanceof PingMessage) {
+                    out.put(new PongMessage());
                 }
-            } else if (message instanceof PingMessage) {
-                out.add(new PongMessage());
+            } catch (InterruptedException e) {
+                break;
             }
         }
     }

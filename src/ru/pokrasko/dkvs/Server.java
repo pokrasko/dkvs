@@ -10,7 +10,10 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Server {
@@ -19,8 +22,8 @@ public class Server {
 
     private List<AtomicBoolean> isConnectedIn;
     private List<AtomicBoolean> isConnectedOut;
-    private ConcurrentLinkedQueue<Message> inQueue;
-    private ConcurrentLinkedQueue<Message> outQueue;
+    private BlockingQueue<Message> inQueue;
+    private BlockingQueue<Message> outQueue;
 
     Server(int id, Properties properties) {
         this.id = id;
@@ -28,8 +31,8 @@ public class Server {
 
         isConnectedIn = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
         isConnectedOut = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
-        inQueue = new ConcurrentLinkedQueue<>();
-        outQueue = new ConcurrentLinkedQueue<>();
+        inQueue = new LinkedBlockingQueue<>();
+        outQueue = new LinkedBlockingQueue<>();
     }
 
     void run() {
@@ -81,19 +84,19 @@ public class Server {
         return isConnectedOut.get(id).getAndSet(value);
     }
     
-    public Message getIncomingMessage() {
+    public Message getIncomingMessage() throws InterruptedException {
         return inQueue.poll();
     }
     
-    public void putIncomingMessage(Message message) {
+    public void putIncomingMessage(Message message) throws InterruptedException {
         inQueue.add(message);
     }
     
-    public Message getOutgoingMessage() {
-        return outQueue.poll();
+    public Message getOutgoingMessage() throws InterruptedException {
+        return outQueue.poll(getTimeout() / 2, TimeUnit.MILLISECONDS);
     }
     
-    public void putOutgoingMessage(Message message) {
-        outQueue.add(message);
+    public void putOutgoingMessage(Message message) throws InterruptedException {
+        outQueue.put(message);
     }
 }
