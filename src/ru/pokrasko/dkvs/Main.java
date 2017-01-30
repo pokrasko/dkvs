@@ -8,6 +8,8 @@ import java.net.URL;
 import java.text.ParseException;
 
 public class Main {
+    public static final int SLEEP_TIMEOUT = 100;
+
     public static void main(String[] args) {
         int id = 0;
         try {

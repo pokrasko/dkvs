@@ -1,8 +1,8 @@
 package ru.pokrasko.dkvs;
 
 import ru.pokrasko.dkvs.messages.Message;
-import ru.pokrasko.dkvs.runnables.SocketAccepter;
-import ru.pokrasko.dkvs.runnables.SocketConnecter;
+import ru.pokrasko.dkvs.runnables.Accepter;
+import ru.pokrasko.dkvs.runnables.Connector;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -41,9 +41,9 @@ public class Server {
             logError("Couldn't open a server socket %s (" + e.getMessage() + ")");
             return;
         }
-        new Thread(new SocketAccepter(this, serverSocket)).run();
+        new Thread(new Accepter(this, serverSocket)).run();
         for (int i = 0; i < properties.getServerAmount(); i++) {
-            new Thread(new SocketConnecter(this, i)).run();
+            new Thread(new Connector(this, i)).run();
         }
     }
 

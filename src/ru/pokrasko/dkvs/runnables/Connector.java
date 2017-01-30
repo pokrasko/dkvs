@@ -9,14 +9,14 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-public class SocketConnecter implements Runnable {
+public class Connector implements Runnable {
     private Server server;
     private Socket socket;
 
     private InetSocketAddress thatAddress;
     private int thatId;
 
-    public SocketConnecter(Server server, int thatId) {
+    public Connector(Server server, int thatId) {
         this.server = server;
         this.thatId = thatId;
         this.thatAddress = server.getServerAddress(thatId);

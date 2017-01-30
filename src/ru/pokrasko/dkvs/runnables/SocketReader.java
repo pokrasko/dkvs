@@ -36,7 +36,7 @@ class SocketReader implements Runnable {
         }
         server.setConnectedIn(id, true);
 
-        while (true) {
+        while (!Thread.interrupted()) {
             try {
                 String line = reader.readLine();
                 if (line == null) {
