@@ -38,7 +38,17 @@ public class SocketConnecter implements Runnable {
                     if (message != null) {
                         writer.println(message);
                     } else {
-                        writer.println(new PingMessage());
+                        try {
+                            Thread.sleep(server.getTimeout() / 2);
+                        } catch (InterruptedException e) {
+                            return;
+                        }
+                        message = server.getOutgoingMessage();
+                        if (message != null) {
+                            writer.println(message);
+                        } else {
+                            writer.println(new PingMessage());
+                        }
                     }
                 }
             } catch (IOException e) {
