@@ -1,41 +1,64 @@
 package ru.pokrasko.dkvs.runnables;
 
+import ru.pokrasko.dkvs.Main;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.Server;
 import ru.pokrasko.dkvs.messages.PingMessage;
 
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-public class Connector implements Runnable {
-    private Server server;
-    private Socket socket;
+public class Connector extends SafeRunnable {
+    private List<AtomicBoolean> isConnectedOut;
+    private BlockingQueue<Message> queue;
+    private int timeout;
 
     private InetSocketAddress thatAddress;
+    private int thisId;
     private int thatId;
 
     public Connector(Server server, int thatId) {
-        this.server = server;
+        this.isConnectedOut = server.getIsConnectedOut();
+        this.queue = server.getOutgoingMessageQueue();
+        this.timeout = server.getTimeout();
+
+        this.thisId = server.getId();
         this.thatId = thatId;
         this.thatAddress = server.getServerAddress(thatId);
     }
 
     @Override
     public void run() {
-        PrintWriter writer;
-        while (!Thread.interrupted()) {
+        start();
+
+        while (isRunning()) {
+            Socket socket;
             try {
                 socket = new Socket(thatAddress.getAddress(), thatAddress.getPort());
+                System.out.println("Established connection to #" + (thatId + 1));
+            } catch (IOException e) {
+                try {
+                    Thread.sleep(Main.ACCEPT_TIMEOUT);
+                } catch (InterruptedException ignored) {}
+                continue;
+            }
 
-                writer = new PrintWriter(socket.getOutputStream());
-                writer.println(server.getId());
-                server.setConnectedOut(thatId, true);
+            try {
+                PrintWriter writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+                writer.println(thisId);
+                isConnectedOut.get(thatId).set(true);
 
-                while (!writer.checkError()) {
-                    Message message = server.getOutgoingMessage();
+                while (isRunning() && !writer.checkError()) {
+                    Message message = queue.poll(timeout / 2, TimeUnit.MILLISECONDS);
                     if (message != null) {
+                        System.out.println("Sending message: " + message);
                         writer.println(message);
                     } else {
                         writer.println(new PingMessage());
@@ -43,10 +66,11 @@ public class Connector implements Runnable {
                 }
             } catch (InterruptedException ignored) {
             } catch (IOException e) {
-                System.out.println("Couldn't connect from server #" + server.getId() + " to server #" + (thatId + 1)
+                System.err.println("Couldn't connect to server #" + (thatId + 1)
                         + " (" + e.getMessage() + ")");
             } finally {
-                server.setConnectedOut(thatId, false);
+                System.out.println("Closing outgoing connection to #" + (thatId + 1));
+                isConnectedOut.get(thatId).set(false);
                 try {
                     socket.close();
                 } catch (IOException ignored) {}

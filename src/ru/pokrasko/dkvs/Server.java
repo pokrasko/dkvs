@@ -3,6 +3,7 @@ package ru.pokrasko.dkvs;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.runnables.Accepter;
 import ru.pokrasko.dkvs.runnables.Connector;
+import ru.pokrasko.dkvs.runnables.Processor;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -11,9 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Server {
@@ -22,8 +21,15 @@ public class Server {
 
     private List<AtomicBoolean> isConnectedIn;
     private List<AtomicBoolean> isConnectedOut;
-    private BlockingQueue<Message> inQueue;
-    private BlockingQueue<Message> outQueue;
+    private BlockingQueue<Message> inQueue = new LinkedBlockingQueue<>();
+    private BlockingQueue<Message> outQueue = new LinkedBlockingQueue<>();
+
+    private Accepter accepter;
+    private List<Connector> connectors = new ArrayList<>();
+
+    private Thread accepterThread;
+    private List<Thread> connectorThreads = new ArrayList<>();
+    private Thread processorThread;
 
     Server(int id, Properties properties) {
         this.id = id;
@@ -31,11 +37,9 @@ public class Server {
 
         isConnectedIn = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
         isConnectedOut = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
-        inQueue = new LinkedBlockingQueue<>();
-        outQueue = new LinkedBlockingQueue<>();
     }
 
-    void run() {
+    void start() {
         InetSocketAddress address = getServerAddress(id);
         ServerSocket serverSocket;
         try {
@@ -44,9 +48,44 @@ public class Server {
             logError("Couldn't open a server socket %s (" + e.getMessage() + ")");
             return;
         }
-        new Thread(new Accepter(this, serverSocket)).run();
+
+        accepter = new Accepter(this, serverSocket);
+        accepterThread = new Thread(accepter);
+        accepterThread.start();
         for (int i = 0; i < properties.getServerAmount(); i++) {
-            new Thread(new Connector(this, i)).run();
+            if (i == id) {
+                continue;
+            }
+
+            Connector connector = new Connector(this, i);
+            Thread connectorThread = new Thread(connector);
+            connectorThread.start();
+            connectors.add(connector);
+            connectorThreads.add(connectorThread);
+        }
+        processorThread = new Thread(new Processor(inQueue, outQueue));
+        processorThread.start();
+    }
+
+    void stop() {
+        if (accepter != null) {
+            accepter.stop();
+        }
+        connectors.forEach(Connector::stop);
+        processorThread.interrupt();
+
+        try {
+            if (accepterThread != null) {
+                accepterThread.join();
+            }
+            if (processorThread != null) {
+                processorThread.join();
+            }
+            for (Thread connectorThread : connectorThreads) {
+                connectorThread.join();
+            }
+        } catch (InterruptedException ignored) {
+            System.err.println("OOPS!");
         }
     }
 
@@ -57,7 +96,7 @@ public class Server {
 
 
     public int getId() {
-        return id + 1;
+        return id;
     }
 
     public InetSocketAddress getServerAddress(int id) {
@@ -68,35 +107,19 @@ public class Server {
         return properties.getTimeout();
     }
 
-    public boolean getConnectedIn(int id) {
-        return isConnectedIn.get(id).get();
+    public List<AtomicBoolean> getIsConnectedIn() {
+        return isConnectedIn;
     }
 
-    public boolean setConnectedIn(int id, boolean value) {
-        return isConnectedIn.get(id).getAndSet(value);
+    public List<AtomicBoolean> getIsConnectedOut() {
+        return isConnectedOut;
     }
 
-    public boolean getConnectedOut(int id) {
-        return isConnectedOut.get(id).get();
+    public BlockingQueue<Message> getIncomingMessageQueue() {
+        return inQueue;
     }
 
-    public boolean setConnectedOut(int id, boolean value) {
-        return isConnectedOut.get(id).getAndSet(value);
-    }
-    
-    public Message getIncomingMessage() throws InterruptedException {
-        return inQueue.poll();
-    }
-    
-    public void putIncomingMessage(Message message) throws InterruptedException {
-        inQueue.add(message);
-    }
-    
-    public Message getOutgoingMessage() throws InterruptedException {
-        return outQueue.poll(getTimeout() / 2, TimeUnit.MILLISECONDS);
-    }
-    
-    public void putOutgoingMessage(Message message) throws InterruptedException {
-        outQueue.put(message);
+    public BlockingQueue<Message> getOutgoingMessageQueue() {
+        return outQueue;
     }
 }

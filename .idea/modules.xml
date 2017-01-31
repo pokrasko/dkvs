@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/dkvs.iml" filepath="$PROJECT_DIR$/.idea/dkvs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/dkvs.iml" filepath="$PROJECT_DIR$/dkvs.iml" />
     </modules>
   </component>
 </project>

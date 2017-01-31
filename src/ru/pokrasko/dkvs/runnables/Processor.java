@@ -1,9 +1,6 @@
 package ru.pokrasko.dkvs.runnables;
 
-import ru.pokrasko.dkvs.Main;
 import ru.pokrasko.dkvs.messages.Message;
-import ru.pokrasko.dkvs.messages.PingMessage;
-import ru.pokrasko.dkvs.messages.PongMessage;
 
 import java.util.concurrent.BlockingQueue;
 
@@ -18,16 +15,12 @@ public class Processor implements Runnable {
 
     @Override
     public void run() {
-        while (!Thread.interrupted()) {
-            try {
-                Message message = in.take();
-
-                if (message instanceof PingMessage) {
-                    out.put(new PongMessage());
-                }
-            } catch (InterruptedException e) {
-                break;
-            }
-        }
+//        while (!Thread.interrupted()) {
+//            try {
+//                Message message = in.take();
+//            } catch (InterruptedException e) {
+//                break;
+//            }
+//        }
     }
 }

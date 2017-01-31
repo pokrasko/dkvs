@@ -10,11 +10,8 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PropertiesParser {
+public class PropertiesParser extends Parser {
     private BufferedReader reader;
-    private String line = "";
-    private int tokenBegin;
-    private int curIndex;
 
     public PropertiesParser(File propertiesFile) throws FileNotFoundException {
         reader = new BufferedReader(new FileReader(propertiesFile));
@@ -102,94 +99,8 @@ public class PropertiesParser {
     }
 
 
-    private int parseInteger() throws ParseException {
-        if (curIndex == line.length()) {
-            try {
-                readLine();
-            } catch (IOException e) {
-                throw new ParseException("Couldn't read an integer (" + e.getMessage() + ")", -1);
-            }
-        }
-        tokenBegin = curIndex;
-
-        boolean isNegative = false;
-        if (currentChar() == '-') {
-            isNegative = true;
-            curIndex++;
-        }
-        if (!Character.isDigit(currentChar())) {
-            throw new ParseException("Couldn't read an integer (non-digit symbol)", curIndex);
-        }
-        int begin = curIndex;
-        while (curIndex < line.length() && Character.isDigit(currentChar())) {
-            curIndex++;
-        }
-
-        try {
-            int result = Integer.parseInt(line.substring(begin, curIndex));
-            if (isNegative) {
-                result *= -1;
-            }
-            return result;
-        } catch (NumberFormatException e) {
-            throw new ParseException("Couldn't read an integer (" + e.getMessage() + ")", begin);
-        }
-    }
-
-    private byte parseByte() throws ParseException {
-        if (curIndex == line.length()) {
-            try {
-                readLine();
-            } catch (IOException e) {
-                throw new ParseException("Couldn't read a byte integer (" + e.getMessage() + ")", -1);
-            }
-        }
-        tokenBegin = curIndex;
-
-        if (!Character.isDigit(currentChar())) {
-            throw new ParseException("Couldn't read a byte integer (non-digit symbol)", curIndex);
-        }
-        int begin = curIndex;
-        while (curIndex < line.length() && Character.isDigit(currentChar())) {
-            curIndex++;
-        }
-
-        try {
-            return Byte.parseByte(line.substring(begin, curIndex));
-        } catch (NumberFormatException e) {
-            throw new ParseException("Couldn't read a byte integer (" + e.getMessage() + ")", begin);
-        }
-    }
-
-    private String parseWord() throws ParseException {
-        if (curIndex == line.length()) {
-            try {
-                readLine();
-            } catch (IOException e) {
-                throw new ParseException("Couldn't read a word (" + e.getMessage() + ")", -1);
-            }
-        }
-        tokenBegin = curIndex;
-
-        if (!Character.isAlphabetic(currentChar())) {
-            throw new ParseException("Couldn't read a byte integer (not a letter)", curIndex);
-        }
-        int begin = curIndex;
-        while (curIndex < line.length() && Character.isAlphabetic(currentChar())) {
-            curIndex++;
-        }
-        return line.substring(begin, curIndex);
-    }
-
-    private void readChar(char expected) throws ParseException {
-        if (currentChar() != expected) {
-            throw new ParseException("(expected '" + expected + "', but got '" + currentChar() + "'", curIndex);
-        }
-        curIndex++;
-    }
-
-
-    private void readLine() throws IOException {
+    @Override
+    void readLine() throws IOException {
         try {
             line = reader.readLine();
             if (line == null) {
@@ -201,9 +112,5 @@ public class PropertiesParser {
             throw new IOException("couldn't read a line");
         }
         curIndex = 0;
-    }
-
-    private char currentChar() {
-        return line.charAt(curIndex);
     }
 }
