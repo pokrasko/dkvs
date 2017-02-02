@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -22,7 +23,7 @@ public class Server {
     private List<AtomicBoolean> isConnectedIn;
     private List<AtomicBoolean> isConnectedOut;
     private BlockingQueue<Message> inQueue = new LinkedBlockingQueue<>();
-    private BlockingQueue<Message> outQueue = new LinkedBlockingQueue<>();
+    private List<BlockingQueue<Message>> outQueues;
 
     private Accepter accepter;
     private List<Connector> connectors = new ArrayList<>();
@@ -35,8 +36,10 @@ public class Server {
         this.id = id;
         this.properties = properties;
 
-        isConnectedIn = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
-        isConnectedOut = new ArrayList<>(Collections.nCopies(properties.getServerAmount(), new AtomicBoolean()));
+        int amount = properties.getServerAmount();
+        isConnectedIn = new ArrayList<>(Collections.nCopies(amount, new AtomicBoolean()));
+        isConnectedOut = new ArrayList<>(Collections.nCopies(amount, new AtomicBoolean()));
+        outQueues = new ArrayList<>(Collections.nCopies(amount, new LinkedBlockingQueue<>()));
     }
 
     void start() {
@@ -63,7 +66,7 @@ public class Server {
             connectors.add(connector);
             connectorThreads.add(connectorThread);
         }
-        processorThread = new Thread(new Processor(inQueue, outQueue));
+        processorThread = new Thread(new Processor(inQueue, outQueues, this));
         processorThread.start();
     }
 
@@ -119,7 +122,7 @@ public class Server {
         return inQueue;
     }
 
-    public BlockingQueue<Message> getOutgoingMessageQueue() {
-        return outQueue;
+    public BlockingQueue<Message> getOutgoingMessageQueue(int id) {
+        return outQueues.get(id);
     }
 }

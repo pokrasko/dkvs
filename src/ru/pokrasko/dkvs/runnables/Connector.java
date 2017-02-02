@@ -12,6 +12,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -26,12 +27,13 @@ public class Connector extends SafeRunnable {
 
     public Connector(Server server, int thatId) {
         this.isConnectedOut = server.getIsConnectedOut();
-        this.queue = server.getOutgoingMessageQueue();
-        this.timeout = server.getTimeout();
+        timeout = server.getTimeout();
 
-        this.thisId = server.getId();
+        thisId = server.getId();
         this.thatId = thatId;
-        this.thatAddress = server.getServerAddress(thatId);
+        thatAddress = server.getServerAddress(thatId);
+
+        queue = server.getOutgoingMessageQueue(thisId);
     }
 
     @Override
