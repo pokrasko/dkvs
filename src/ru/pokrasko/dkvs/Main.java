@@ -1,6 +1,7 @@
 package ru.pokrasko.dkvs;
 
 import ru.pokrasko.dkvs.parsers.PropertiesParser;
+import ru.pokrasko.dkvs.server.Server;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -53,7 +54,7 @@ public class Main {
         }
 
         server = new Server(id, properties);
-        server.start();
+        server.run();
     }
 
     private static PropertiesParser getPropertiesParser(File propertiesFile) {
@@ -66,12 +67,10 @@ public class Main {
     }
 
     private static class ThisSignalHandler implements SignalHandler {
-        private SignalHandler oldHandler;
-
         private static ThisSignalHandler install(String signalName) {
             Signal signal = new Signal(signalName);
             ThisSignalHandler handler = new ThisSignalHandler();
-            handler.oldHandler = Signal.handle(signal, handler);
+            Signal.handle(signal, handler);
             return handler;
         }
 

@@ -14,15 +14,15 @@ public class Properties {
         this.timeout = timeout;
     }
 
-    InetSocketAddress getServerAddress(int i) {
+    public InetSocketAddress getServerAddress(int i) {
         return serverAddresses.get(i);
     }
 
-    int getServerAmount() {
+    public int getServerAmount() {
         return serverAmount;
     }
 
-    int getTimeout() {
+    public int getTimeout() {
         return timeout;
     }
 }
