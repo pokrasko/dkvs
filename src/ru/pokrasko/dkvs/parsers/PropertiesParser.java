@@ -22,7 +22,7 @@ public class PropertiesParser extends Parser {
         List<InetSocketAddress> serverAddresses = new ArrayList<>();
         int timeout;
 
-        for (int i = 1; (firstWord = parseWord()).equals("node"); i++) {
+        for (int i = 1; (firstWord = parsePureWord()).equals("node"); i++) {
             try {
                 readChar('.');
                 int id = parseInteger();

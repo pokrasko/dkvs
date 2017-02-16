@@ -5,4 +5,9 @@ public class PingMessage extends Message {
     public String toString() {
         return "ping";
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof PingMessage;
+    }
 }

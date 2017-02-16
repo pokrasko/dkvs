@@ -1,15 +1,15 @@
-package ru.pokrasko.dkvs.server;
+package ru.pokrasko.dkvs;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-abstract class SafeRunnable implements Runnable {
+public abstract class SafeRunnable implements Runnable {
     private volatile AtomicBoolean isRunning = new AtomicBoolean();
 
-    void start() {
+    protected void start() {
         isRunning.set(true);
     }
 
-    boolean isRunning() {
+    public boolean isRunning() {
         return isRunning.get();
     }
 

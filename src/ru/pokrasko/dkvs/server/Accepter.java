@@ -1,5 +1,6 @@
 package ru.pokrasko.dkvs.server;
 
+import ru.pokrasko.dkvs.SafeRunnable;
 import ru.pokrasko.dkvs.messages.Message;
 
 import java.io.IOException;
@@ -23,7 +24,6 @@ class Accepter extends SafeRunnable {
     @Override
     public void run() {
         start();
-        System.out.println("Started Accepter");
 
         while (isRunning()) {
             Socket socket;

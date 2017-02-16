@@ -16,6 +16,9 @@ abstract class Parser {
                 throw new ParseException("Couldn't read an integer (" + e.getMessage() + ")", -1);
             }
         }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
         tokenBegin = curIndex;
 
         boolean isNegative = false;
@@ -50,6 +53,9 @@ abstract class Parser {
                 throw new ParseException("Couldn't read a byte integer (" + e.getMessage() + ")", -1);
             }
         }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
         tokenBegin = curIndex;
 
         if (!Character.isDigit(currentChar())) {
@@ -67,7 +73,7 @@ abstract class Parser {
         }
     }
 
-    String parseWord() throws ParseException {
+    String parsePureWord() throws ParseException {
         if (curIndex == line.length()) {
             try {
                 readLine();
@@ -75,27 +81,74 @@ abstract class Parser {
                 throw new ParseException("Couldn't read a word (" + e.getMessage() + ")", -1);
             }
         }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
         tokenBegin = curIndex;
 
         if (!Character.isAlphabetic(currentChar())) {
-            throw new ParseException("Couldn't read a byte integer (not a letter)", curIndex);
+            throw new ParseException("Couldn't read a word (not a letter)", curIndex);
         }
         int begin = curIndex;
-        while (curIndex < line.length() && Character.isAlphabetic(currentChar())) {
+        while (curIndex < line.length() && Character.isJavaIdentifierPart(currentChar())) {
+            curIndex++;
+        }
+        return line.substring(begin, curIndex);
+    }
+
+    String parseDirtyWord() throws ParseException {
+        if (curIndex == line.length()) {
+            try {
+                readLine();
+            } catch (IOException e) {
+                throw new ParseException("Couldn't read a word (" + e.getMessage() + ")", -1);
+            }
+        }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
+        tokenBegin = curIndex;
+
+        int begin = curIndex;
+        while (curIndex < line.length() && !Character.isWhitespace(currentChar())) {
             curIndex++;
         }
         return line.substring(begin, curIndex);
     }
 
     void readChar(char expected) throws ParseException {
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
         if (currentChar() != expected) {
             throw new ParseException("(expected '" + expected + "', but got '" + currentChar() + "'", curIndex);
         }
         curIndex++;
     }
 
+    void checkEnd() throws ParseException {
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
+        if (curIndex != line.length()) {
+            tokenBegin = curIndex;
+            throw new ParseException("excess sybmols", curIndex);
+        }
+    }
+
     private char currentChar() {
         return line.charAt(curIndex);
+    }
+
+    protected Object logError(String message, String line, Exception e) {
+        System.err.println(message + " (" + e.getMessage() + ") at symbol " + tokenBegin
+                + " in line \"" + line + "\"");
+        return null;
+    }
+
+    protected Object logError(String message, String line) {
+        System.err.println(message + " at symbol " + tokenBegin + " in line \"" + line + "\"");
+        return null;
     }
 
     abstract void readLine() throws IOException;

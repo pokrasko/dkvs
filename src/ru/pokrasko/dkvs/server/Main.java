@@ -1,7 +1,7 @@
-package ru.pokrasko.dkvs;
+package ru.pokrasko.dkvs.server;
 
+import ru.pokrasko.dkvs.Properties;
 import ru.pokrasko.dkvs.parsers.PropertiesParser;
-import ru.pokrasko.dkvs.server.Server;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
@@ -11,7 +11,7 @@ import java.net.URL;
 import java.text.ParseException;
 
 public class Main {
-    public static final int ACCEPT_TIMEOUT = 1000;
+    static final int CONNECT_TIMEOUT = 1000;
 
     private static Server server;
 

@@ -20,6 +20,13 @@ public class PrepareOkMessage extends ViewedMessage {
 
     @Override
     public String toString() {
-        return null;
+        return "PrepareOk " + viewNumber + " " + opNumber + " " + replicaId;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof PrepareOkMessage
+                && opNumber == ((PrepareOkMessage) o).opNumber
+                && replicaId == ((PrepareOkMessage) o).replicaId;
     }
 }

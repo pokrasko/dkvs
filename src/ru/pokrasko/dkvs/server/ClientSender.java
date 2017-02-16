@@ -1,5 +1,6 @@
 package ru.pokrasko.dkvs.server;
 
+import ru.pokrasko.dkvs.SafeRunnable;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.messages.PingMessage;
 
@@ -34,6 +35,10 @@ class ClientSender extends SafeRunnable {
             throw e;
         }
 
+        queue = server.registerOutgoingClientMessageQueue(thatId);
+        if (queue == null) {
+            throw new IOException("client #" + (thatId + 1) + " is already connected");
+        }
         timeout = server.getTimeout();
 
         this.thatId = thatId;
@@ -58,6 +63,8 @@ class ClientSender extends SafeRunnable {
             try {
                 socket.close();
             } catch (IOException ignored) {}
+
+            server.unregisterOutgoingClientMessageQueue(thatId);
 
             if (server.isRunning()) {
                 server.unregisterSender(this, Thread.currentThread());

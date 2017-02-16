@@ -1,9 +1,9 @@
 package ru.pokrasko.dkvs.messages;
 
 public abstract class ViewedMessage extends Message {
-    protected int viewNumber;
+    int viewNumber;
 
-    protected ViewedMessage(int viewNumber) {
+    ViewedMessage(int viewNumber) {
         this.viewNumber = viewNumber;
     }
 

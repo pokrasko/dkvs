@@ -1,6 +1,6 @@
 package ru.pokrasko.dkvs.server;
 
-import ru.pokrasko.dkvs.Main;
+import ru.pokrasko.dkvs.SafeRunnable;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.messages.PingMessage;
 
@@ -13,23 +13,25 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 class Connector extends SafeRunnable {
+    private Server server;
     private ServerSender serverSender;
-
-    private BlockingQueue<Message> queue;
-    private int timeout;
 
     private InetSocketAddress thatAddress;
     private int thisId;
     private int thatId;
 
+    private BlockingQueue<Message> queue;
+    private int timeout;
+
     Connector(int thatId, Server server) {
-        timeout = server.getTimeout();
+        this.server = server;
 
         thisId = server.getId();
         this.thatId = thatId;
         thatAddress = server.getServerAddress(thatId);
 
-        queue = server.getOutgoingServerMessageQueue(thisId);
+        queue = server.getOutgoingServerMessageQueue(thatId);
+        timeout = server.getTimeout();
     }
 
     @Override
@@ -43,8 +45,10 @@ class Connector extends SafeRunnable {
                 System.out.println("Established connection to server #" + (thatId + 1));
             } catch (IOException e) {
                 try {
-                    Thread.sleep(Main.ACCEPT_TIMEOUT);
-                } catch (InterruptedException ignored) {}
+                    Thread.sleep(Main.CONNECT_TIMEOUT);
+                } catch (InterruptedException ignored) {
+                    stop();
+                }
                 continue;
             }
 
@@ -74,7 +78,7 @@ class Connector extends SafeRunnable {
         private Socket socket;
         private PrintWriter writer;
 
-        ServerSender(Socket socket) throws IOException {
+        private ServerSender(Socket socket) throws IOException {
             this.socket = socket;
             try {
                 writer = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
@@ -92,18 +96,21 @@ class Connector extends SafeRunnable {
 
             try {
                 writer.println("Server " + thisId);
+                server.setConnectedOut(thatId);
 
                 while (isRunning() && !writer.checkError()) {
                     Message message = queue.poll(timeout / 2, TimeUnit.MILLISECONDS);
                     if (message != null) {
-                        System.out.println("Sending to server #" + thatId + " message: " + message);
+                        System.out.println("Sending to server #" + (thatId + 1) + " message: " + message);
                         writer.println(message);
                     } else {
                         writer.println(new PingMessage());
                     }
                 }
             } catch (InterruptedException ignored) {
+                stop();
             } finally {
+                server.resetConnectedOut(thatId);
                 try {
                     socket.close();
                 } catch (IOException ignored) {}

@@ -16,4 +16,10 @@ public class CommitMessage extends ViewedMessage {
     public String toString() {
         return "Commit " + viewNumber + " " + commitNumber;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof CommitMessage
+                && commitNumber == ((CommitMessage) o).commitNumber;
+    }
 }

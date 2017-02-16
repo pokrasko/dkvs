@@ -1,33 +1,31 @@
 package ru.pokrasko.dkvs.messages;
 
-import ru.pokrasko.dkvs.replica.Operation;
+import ru.pokrasko.dkvs.service.Operation;
 import ru.pokrasko.dkvs.replica.Request;
 
-public class RequestMessage<R> extends Message {
-    private Request<R> request;
+public class RequestMessage extends Message {
+    private Request<?, ?> request;
 
-    public RequestMessage(Request<R> request) {
+    public RequestMessage(Request<?, ?> request) {
         this.request = request;
     }
 
-    public Request<R> getRequest() {
+    public Request<?, ?> getRequest() {
         return request;
     }
 
-    public Operation<R> getOperation() {
+    public Operation<?, ?> getOperation() {
         return request.getOperation();
-    }
-
-    public int getClientId() {
-        return request.getClientId();
-    }
-
-    public int getRequestNumber() {
-        return request.getRequestNumber();
     }
 
     @Override
     public String toString() {
         return "Request " + request;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return o instanceof RequestMessage
+                && request == ((RequestMessage) o).request;
     }
 }

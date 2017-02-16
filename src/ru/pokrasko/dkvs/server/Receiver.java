@@ -1,6 +1,9 @@
 package ru.pokrasko.dkvs.server;
 
+import ru.pokrasko.dkvs.SafeRunnable;
+import ru.pokrasko.dkvs.messages.AcceptedMessage;
 import ru.pokrasko.dkvs.messages.Message;
+import ru.pokrasko.dkvs.messages.PingMessage;
 import ru.pokrasko.dkvs.parsers.MessageParser;
 
 import java.io.BufferedReader;
@@ -16,6 +19,7 @@ class Receiver extends SafeRunnable {
     private BufferedReader reader;
 
     private boolean isThatServer;
+    private int thatId;
 
     private BlockingQueue<Message> queue;
 
@@ -45,7 +49,7 @@ class Receiver extends SafeRunnable {
             }
 
             isThatServer = line.startsWith("Server");
-            int thatId = Integer.parseInt(line.substring(6).trim());
+            thatId = Integer.parseInt(line.substring(6).trim());
             System.out.println("Received connection from " + serverOrClient() + " #" + (thatId + 1));
 
             if (line.startsWith("Client")) {
@@ -53,6 +57,8 @@ class Receiver extends SafeRunnable {
                 Thread senderThread = new Thread(sender);
                 senderThread.start();
                 server.registerSender(sender, senderThread);
+            } else {
+                server.setConnectedIn(thatId);
             }
 
             while (isRunning()) {
@@ -66,8 +72,13 @@ class Receiver extends SafeRunnable {
                             System.err.println("Wrong message received from " + serverOrClient() + " #" + (thatId + 1)
                                     + ": " + line);
                         } else {
-                            System.out.println("Received message from " + serverOrClient() + " #" + (thatId + 1)
-                                    + ": " + message);
+                            if (!(message instanceof PingMessage)) {
+                                System.out.println("Received message from " + serverOrClient() + " #" + (thatId + 1)
+                                        + ": " + message);
+                            }
+                            if (message instanceof AcceptedMessage) {
+                                ((AcceptedMessage) message).setId(thatId);
+                            }
                             queue.put(message);
                         }
                     }
@@ -93,6 +104,9 @@ class Receiver extends SafeRunnable {
             return false;
         }
 
+        if (isThatServer) {
+            server.resetConnectedIn(thatId);
+        }
         try {
             socket.close();
         } catch (IOException ignored) {}
