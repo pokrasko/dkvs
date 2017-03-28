@@ -2,7 +2,7 @@ package ru.pokrasko.dkvs.messages;
 
 import ru.pokrasko.dkvs.replica.Log;
 
-public abstract class LogMessage extends CommitNumberMessage {
+abstract class LogMessage extends CommitNumberMessage {
     Log log;
     int opNumber;
 

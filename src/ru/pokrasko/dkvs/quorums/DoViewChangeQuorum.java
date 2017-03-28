@@ -1,9 +1,6 @@
 package ru.pokrasko.dkvs.quorums;
 
 import ru.pokrasko.dkvs.replica.Log;
-import ru.pokrasko.dkvs.replica.Request;
-
-import java.util.List;
 
 public class DoViewChangeQuorum extends VlnkQuorum {
     private int maxViewNumberReplicaId;
@@ -26,14 +23,6 @@ public class DoViewChangeQuorum extends VlnkQuorum {
 
     @Override
     protected void checkVlnk(int replicaId, int viewNumber, Log log, int opNumber, int commitNumber) {
-//        if (viewNumber > this.viewNumber || viewNumber == this.viewNumber && opNumber > this.opNumber) {
-//            this.viewNumber = viewNumber;
-//            this.log = log;
-//            this.opNumber = opNumber;
-//        }
-//        if (commitNumber > this.commitNumber) {
-//            this.commitNumber = commitNumber;
-//        }
         if (viewNumber > data.viewNumber || viewNumber == data.viewNumber && opNumber > data.opNumber) {
             data.viewNumber = viewNumber;
             data.log = log;

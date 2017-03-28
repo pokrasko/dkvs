@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public abstract class BooleanQuorum implements Quorum<Boolean> {
-    protected int quorumNumber;
-    protected List<Boolean> confirmed;
-    protected int confirmedNumber;
+abstract class BooleanQuorum implements Quorum<Boolean> {
+    int quorumNumber;
+    private List<Boolean> confirmed;
+    int confirmedNumber;
 
-    protected BooleanQuorum(int quorumNumber, int capacity) {
+    BooleanQuorum(int quorumNumber, int capacity) {
         this.quorumNumber = quorumNumber;
         this.confirmed = new ArrayList<>(Collections.nCopies(capacity, false));
     }

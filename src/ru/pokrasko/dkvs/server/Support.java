@@ -13,9 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 class Support extends SafeRunnable {
-//    private enum ChangeStatus {
-//        NO, FIRST, SECOND
-//    }
     enum STState {
         NO, UPDATE, UPGRADE
     }
@@ -23,15 +20,6 @@ class Support extends SafeRunnable {
     private Replica replica;
 
     private Service service = new Service();
-
-//    private Set<ru.pokrasko.dkvs.server.Waiting> waitingSet = new HashSet<>();
-//    private AcceptedQuorum acceptedQuorum;
-//    private PrepareQuorum prepareQuorum;
-//    private ChangeQuorum changeQuorum;
-//    private NewPrimaryQuorum newPrimaryQuorum;
-
-//    private ChangeStatus changeStatus;
-
 
     private Waiting waiting;
     private AcceptedQuorum acceptedQuorum;
@@ -50,10 +38,6 @@ class Support extends SafeRunnable {
 
     Support(Replica replica, int timeout) {
         this.replica = replica;
-//        this.acceptedQuorum = new AcceptedQuorum(replica, replica.getReplicaNumber());
-//        this.prepareQuorum = new PrepareQuorum(replica);
-//        this.changeQuorum = new ChangeQuorum(replica, replica.getReplicaNumber());
-//        this.newPrimaryQuorum = new NewPrimaryQuorum(replica, replica.getReplicaNumber());
         this.timeout = timeout;
 
         this.acceptedQuorum = new AcceptedQuorum(replica, replica.getReplicaNumber());
@@ -81,13 +65,6 @@ class Support extends SafeRunnable {
         return true;
     }
 
-//    boolean checkMessageForModernity(ViewedMessage message) {
-//        if (message.getViewNumber() > replica.getViewNumber()) {
-//            startStateTransferUpgrade(0);
-//        }
-//        return message.getViewNumber() == replica.getViewNumber();
-//    }
-
     long getRecoveryNonce() {
         return recoveryNonce;
     }
@@ -96,7 +73,6 @@ class Support extends SafeRunnable {
         if (stateTransferState == STState.UPDATE) {
             ((StateTransferUpdateWaiting) waiting).newNeeded(lastNeeded);
         } else {
-            System.err.println("Starting update state transfer");
             stateTransferState = STState.UPDATE;
             waiting = new StateTransferUpdateWaiting(new GetStateMessage(replica.getViewNumber(),
                     replica.getOpNumber(),
@@ -105,83 +81,18 @@ class Support extends SafeRunnable {
     }
 
     void startStateTransferUpgrade(int responder) {
-        System.err.println("Starting upgrade state transfer");
         stateTransferState = STState.UPGRADE;
         waiting = new StateTransferWaiting(new GetStateMessage(replica.getViewNumber(),
                 replica.getOpNumber(),
                 replica.getId()), responder, 0L, timeout / 2);
-//        replica.startStateTransfer(timeout);
-    }
-
-    void newNeeded(int opNumber) {
-        assert stateTransferState == STState.UPDATE && replica.getId() != replica.getPrimaryId();
-        ((StateTransferUpdateWaiting) waiting).newNeeded(opNumber);
     }
 
     void gotNeeded(int opNumber) {
-        assert stateTransferState == STState.UPDATE && replica.getId() != replica.getPrimaryId();
         if (((StateTransferUpdateWaiting) waiting).gotNeeded(opNumber)) {
             stateTransferState = STState.NO;
             waiting = null;
         }
     }
-
-    void finishStateTransfer() {
-        stateTransferState = STState.NO;
-        if (replica.getStatus() == Replica.Status.NORMAL && replica.isPrimary()) {
-            waiting = new PrepareCommitWaiting(replica.getViewNumber(), replica.getOpNumber(),
-                    timeout / 2, timeout / 2);
-        }
-    }
-
-//    void startViewChange() {
-//        replica.startViewChange();
-//        if (changeStatus == ChangeStatus.FIRST) {
-//            removeWaiting(StartViewChangeMessage.class);
-//        } else if (changeStatus == ChangeStatus.SECOND) {
-//            removeWaiting(DoViewChangeMessage.class);
-//        }
-//        addWaitingBroadcast(new StartViewChangeMessage(replica.getViewNumber(),
-//                replica.getId()), 0, timeout / 2);
-//        changeStatus = ChangeStatus.FIRST;
-//    }
-
-//    void startViewChange(int viewNumber) {
-//        replica.startViewChange(viewNumber);
-//        if (changeStatus == ChangeStatus.FIRST) {
-//            removeWaiting(StartViewChangeMessage.class);
-//        } else if (changeStatus == ChangeStatus.SECOND) {
-//            removeWaiting(DoViewChangeMessage.class);
-//        }
-//        addWaitingBroadcast(new StartViewChangeMessage(replica.getViewNumber(),
-//                replica.getId()), 0, timeout / 2);
-//        changeStatus = ChangeStatus.FIRST;
-//    }
-
-//    void continueViewChange() {
-//        removeWaiting(StartViewChangeMessage.class);
-//        addWaitingFromPrimary(new DoViewChangeMessage(replica.getViewNumber(),
-//                    replica.getLogFrom(0),
-//                    replica.getLastNormalViewNumber(),
-//                    replica.getOpNumber(),
-//                    replica.getCommitNumber(),
-//                    replica.getId()),
-//                0, timeout / 2);
-//        changeStatus = ChangeStatus.SECOND;
-//    }
-//
-//    void finishViewChangeAsPrimary(Log log, int opNumber, int commitNumber) {
-//        replica.finishViewChangeAsPrimary(log, opNumber, commitNumber);
-//        changeStatus = ChangeStatus.NO;
-//    }
-//
-//    List<ru.pokrasko.dkvs.server.Waiting> getWaitingList() {
-//        return waitingSet.stream().filter(ru.pokrasko.dkvs.server.Waiting::isTimedOut).collect(Collectors.toList());
-//    }
-
-//    void addWaitingFromPrimary(Message message, long timeout, long period) {
-//        waitingSet.add(new ru.pokrasko.dkvs.server.Waiting(message, replica.getPrimaryId(), timeout, period));
-//    }
 
     void startIdentification(int id) {
         timeToStart = System.currentTimeMillis() + timeout * 2;
@@ -197,23 +108,6 @@ class Support extends SafeRunnable {
             return false;
         }
     }
-
-//    void removeWaiting(Class<? extends Message> messageClass) {
-//        ru.pokrasko.dkvs.server.Waiting removed = null;
-//        for (ru.pokrasko.dkvs.server.Waiting waiting : waitingSet) {
-//            if (messageClass.isAssignableFrom(waiting.getMessage().getClass())) {
-//                removed = waiting;
-//                break;
-//            }
-//        }
-//        if (removed != null) {
-//            waitingSet.remove(removed);
-//        }
-//    }
-
-//    void clearWaiting() {
-//        waitingSet.clear();
-//    }
 
     boolean isPrimaryConnected() {
         return acceptedQuorum.isConnected(replica.getPrimaryId());
@@ -245,24 +139,6 @@ class Support extends SafeRunnable {
 
         replica.run();
     }
-
-//    int checkPrepareQuorum(int opNumber, int id) {
-//        return prepareQuorum.checkQuorum(opNumber, id);
-//    }
-//
-//    boolean checkChangeQuorum(int viewNumber, int id) {
-//        return changeQuorum.checkQuorum(viewNumber, id);
-//    }
-//
-//    boolean checkNewPrimaryQuorum(DoViewChangeMessage message) {
-//        return newPrimaryQuorum.checkQuorum(message);
-//    }
-//
-//    NewPrimaryQuorum getNewPrimaryQuorum() {
-//        return newPrimaryQuorum;
-//    }
-
-
 
     void setStatus(Replica.Status status, int viewNumber) {
         replica.setStatus(status, viewNumber);
@@ -309,13 +185,9 @@ class Support extends SafeRunnable {
     }
 
     void checkForCommit(int commitNumber) {
-        System.err.println("Starting checkForCommit");
         int newCommitNumber = Math.min(commitNumber, replica.getOpNumber());
-        System.err.println("Old commit number is " + replica.getCommitNumber() + ", new one is " + newCommitNumber);
         if (newCommitNumber > replica.getCommitNumber()) {
             for (int i = replica.getCommitNumber() + 1; i <= newCommitNumber; i++) {
-                System.err.println("The backup is going to commit request #" + i + ": "
-                        + replica.getRequestByOpNumber(i));
                 commit(i);
             }
         }

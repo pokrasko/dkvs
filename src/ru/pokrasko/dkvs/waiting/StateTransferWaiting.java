@@ -17,7 +17,7 @@ public class StateTransferWaiting extends SimpleWaiting {
 
     @Override
     public List<Map.Entry<Integer, Message>> check(int receiver) {
-        return super.check(receiver);
+        return super.check(this.receiver);
     }
 
     @Override

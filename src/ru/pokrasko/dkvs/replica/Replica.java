@@ -107,59 +107,17 @@ public class Replica extends SafeRunnable {
                 || request.getRequestNumber() > getLatestClientRequest(clientId).getRequestNumber();
     }
 
-//    public Result<?> getLatestResult(int clientId) {
-//        if (!clientTable.containsKey(clientId)) {
-//            return null;
-//        }
-//        Request<?, ?> latestRequest = getLatestClientRequest(clientId);
-//
-//        return latestRequest.equals(request) ? latestRequest.getResult() : null;
-//    }
-
     public int appendLog(Request<?, ?> request) {
         log.add(request);
         clientTable.put(request.getClientId(), ++opNumber);
         return opNumber;
     }
 
-//    public Result<?> getResult(int opNumber) {
-//        return getRequestByOpNumber(opNumber).getResult();
-//    }
-//
-//    public int getOpClientId(int opNumber) {
-//        return getRequestByOpNumber(opNumber).getClientId();
-//    }
-//
-//    public int getOpRequestNumber(int opNumber) {
-//        return getRequestByOpNumber(opNumber).getRequestNumber();
-//    }
-
-//    public void startStateTransfer(long timeout) {}
-//
-//    public void startViewChange() {
-//        viewNumber++;
-//        status = Status.VIEW_CHANGE;
-//    }
-//
-//    public void startViewChange(int viewNumber) {
-//        this.viewNumber = viewNumber;
-//        status = Status.VIEW_CHANGE;
-//    }
-//
-//    public void finishViewChangeAsPrimary(Log log, int opNumber, int commitNumber) {
-//        this.log = log;
-//        this.opNumber = opNumber;
-//        this.commitNumber = commitNumber;
-//        status = Status.NORMAL;
-//        lastNormalViewNumber = viewNumber;
-//    }
-
     public Request<?, ?> getRequestToCommit() {
         return getRequestByOpNumber(++commitNumber);
     }
 
     public void setStatus(Status status, int viewNumber) {
-        System.out.println("New status: " + status + " in view #" + viewNumber);
         this.status = status;
         this.viewNumber = viewNumber;
         if (status == Status.NORMAL) {

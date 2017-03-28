@@ -2,8 +2,6 @@ package ru.pokrasko.dkvs.messages;
 
 import ru.pokrasko.dkvs.parsers.Parsable;
 
-import java.lang.reflect.InvocationTargetException;
-
 public abstract class Message implements Parsable {
     private String type;
 
@@ -36,19 +34,10 @@ public abstract class Message implements Parsable {
 
         try {
             return thisClass.getConstructor(classes).newInstance(data);
-        } catch (NoSuchMethodException e) {
-            System.err.println("Couldn't construct a message (there is no such constructor): " + e.getLocalizedMessage());
-        } catch (InstantiationException e) {
-            System.err.println("Couldn't instantiate a message: " + e.getLocalizedMessage());
-        } catch (IllegalAccessException e) {
-            System.err.println("Couldn't instantiate a message (illegal access): " + e.getLocalizedMessage());
-        } catch (InvocationTargetException e) {
-            System.err.println("Couldn't instantiate a message (invocation target exception): " + e.getLocalizedMessage());
-//        } catch (Exception e) {
-//            System.err.println("Couldn't construct a message: " + e.getMessage());
-//            return null;
+        } catch (Exception e) {
+            System.err.println("Couldn't construct a message: " + e.getLocalizedMessage());
+            return null;
         }
-        return null;
     }
 
     @Override

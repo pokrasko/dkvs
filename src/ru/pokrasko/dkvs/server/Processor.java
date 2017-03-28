@@ -50,139 +50,6 @@ class Processor implements Runnable {
             try {
                 Message message = in.poll(timeout / 2, TimeUnit.MILLISECONDS);
 
-//                resendWaitingMessages();
-//
-//                if (message == null) {
-//                    continue;
-//                }
-//
-//                if (message instanceof NewReplicaMessage) {
-//                    NewReplicaMessage newReplicaMessage = (NewReplicaMessage) message;
-//                    sendMessageToReplica(newReplicaMessage.getId(), new AcceptedMessage(replica.getId()));
-//                } else if (message instanceof AcceptedMessage) {
-//                    AcceptedMessage acceptedMessage = (AcceptedMessage) message;
-//                    server.setAccepted(acceptedMessage.getId());
-//                }
-//
-//                if (!replica.isRunning()
-//                        || message instanceof ViewedMessage
-//                            && ((ViewedMessage) message).getViewNumber() < replica.getViewNumber()) {
-//                    continue;
-//                }
-//
-//                if (!replica.isPrimary() && !support.isPrimaryConnected()) {
-//                    support.startViewChange();
-//                    continue;
-//                }
-//
-//                Replica.Status status = replica.getStatus();
-//                if (status != Replica.Status.RECOVERY) {
-//                    if (status != Replica.Status.VIEW_CHANGE) {                 // NORMAL PROTOCOL
-//                        if (message instanceof ViewedMessage
-//                                && !support.checkMessageForModernity((ViewedMessage) message)) {
-//                            resendWaitingMessages();
-//                            continue;
-//                        }
-//                        if (message instanceof RequestMessage) {
-//                            if (!replica.isPrimary()) {
-//                                continue;
-//                            }
-//
-//                            RequestMessage requestMessage = (RequestMessage) message;
-//                            Request<?, ?> request = requestMessage.getRequest();
-//                            if (!replica.isRequestNew(request)) {
-//                                if (replica.isRequestOld(request)) {
-//                                    sendMessageToClient(request.getClientId(), new ReplyMessage(replica.getViewNumber(),
-//                                            request.getRequestNumber(),
-//                                            replica.getLatestResult(request)));
-//                                }
-//                                continue;
-//                            }
-//
-//                            int opNumber = replica.appendLog(request);
-//                            broadcastMessageToReplicas(new PrepareMessage(replica.getViewNumber(),
-//                                    opNumber,
-//                                    replica.getCommitNumber(),
-//                                    request));
-//                        } else {
-//                            if (replica.isPrimary()) {
-//                                broadcastMessageToReplicas(new CommitMessage(replica.getViewNumber(),
-//                                        replica.getCommitNumber()));
-//                            }
-//
-//                            if (message instanceof PrepareMessage) {
-//                                if (replica.isPrimary()) {
-//                                    continue;
-//                                }
-//
-//                                PrepareMessage prepareMessage = (PrepareMessage) message;
-//                                if (prepareMessage.getOpNumber() > replica.getOpNumber() + 1) {
-//                                    replica.startStateTransferUpgrade(5 * timeout);
-//                                } else {
-//                                    if (prepareMessage.getOpNumber() == replica.getOpNumber() + 1) {
-//                                        replica.appendLog(prepareMessage.getRequest());
-//                                    }
-//                                    sendMessageToPrimary(new PrepareOkMessage(replica.getViewNumber(),
-//                                            replica.getOpNumber(),
-//                                            replica.getId()));
-//                                }
-//
-//                                int commitNumber = prepareMessage.getCommitNumber();
-//                                while (replica.getCommitNumber() < commitNumber
-//                                        && support.commit(replica.getCommitNumber() + 1)) {
-//                                }
-//                            } else if (message instanceof PrepareOkMessage) {
-//                                PrepareOkMessage prepareOkMessage = (PrepareOkMessage) message;
-//                                int opNumber = prepareOkMessage.getOpNumber();
-//                                if (replica.getCommitNumber() < opNumber) {
-//                                    int newCommitNumber = support.checkPrepareQuorum(opNumber,
-//                                            prepareOkMessage.getReplicaId());
-//                                    System.out.println("New commit number is " + newCommitNumber);
-//                                    while (replica.getCommitNumber() < newCommitNumber) {
-//                                        int commitNumber = replica.getCommitNumber() + 1;
-//                                        support.commit(commitNumber);
-//                                        sendMessageToClient(replica.getOpClientId(commitNumber),
-//                                                new ReplyMessage(replica.getViewNumber(),
-//                                                        replica.getOpRequestNumber(commitNumber),
-//                                                        replica.getResult(commitNumber)));
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-//                                                                                // VIEW CHANGE MESSAGE
-//                    if (message instanceof StartViewChangeMessage) {
-//                        StartViewChangeMessage startViewChangeMessage = (StartViewChangeMessage) message;
-//                        int viewNumber = startViewChangeMessage.getViewNumber();
-//                        if (viewNumber > replica.getViewNumber()) {
-//                            support.startViewChange(viewNumber);
-//                        } else if (status == Replica.Status.NORMAL) {
-//                            continue;
-//                        }
-//                        if (support.checkChangeQuorum(viewNumber, startViewChangeMessage.getReplicaId())) {
-//                            support.continueViewChange();
-//                        }
-//                    } else if (message instanceof DoViewChangeMessage) {
-//                        DoViewChangeMessage doViewChangeMessage = (DoViewChangeMessage) message;
-//                        int viewNumber = doViewChangeMessage.getViewNumber();
-//                        if (viewNumber > replica.getViewNumber()) {
-//                            support.startViewChange(viewNumber);
-//                        } else if (status == Replica.Status.NORMAL) {
-//                            continue;
-//                        }
-//                        if (!replica.isPrimary()) {
-//                            continue;
-//                        }
-//                        if (support.checkNewPrimaryQuorum(doViewChangeMessage)) {
-//                            NewPrimaryQuorum quorum = support.getNewPrimaryQuorum();
-//                            broadcastMessageToReplicas(new StartViewMessage(doViewChangeMessage.getViewNumber(),
-//                                    quorum.getLogFrom(),
-//                                    quorum.getOpNumber(),
-//                                    quorum.getCommitNumber()));
-//                        }
-//                    }
-//                }
-
                 // No messages
                 if (message == null) {
                     handleNullMessage();
@@ -319,8 +186,6 @@ class Processor implements Runnable {
                                         prepareOkMessage.getOpNumber());
                                 if (commitNumber > 0) {
                                     for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
-                                        System.err.println("The primary is going to commit request #" + i + ": "
-                                                + replica.getRequestByOpNumber(i));
                                         commit(i);
                                     }
                                 }
@@ -480,14 +345,6 @@ class Processor implements Runnable {
     }
 
     private void resendWaitingMessages() throws InterruptedException {
-//        List<Waiting> waitings = support.getWaitingList();
-//        for (Waiting waiting : waitings) {
-//            if (waiting.getSender() != -1) {
-//                sendMessageToReplica(waiting.getSender(), waiting.getMessage());
-//            } else {
-//                broadcastMessageToReplicas(waiting.getMessage());
-//            }
-//        }
         List<Map.Entry<Integer, Message>> waitingMessages = support.checkWaiting();
         if (waitingMessages != null) {
             for (Map.Entry<Integer, Message> waitingMessage : waitingMessages) {
@@ -525,8 +382,6 @@ class Processor implements Runnable {
         } else {
             replica.updateLog(log, opNumber);
             for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
-                System.err.println("The replica in new view is going to commit request #" + i + ": "
-                        + replica.getRequestByOpNumber(i));
                 commit(i);
             }
             return true;
@@ -540,8 +395,6 @@ class Processor implements Runnable {
 
         replica.updateLog(vlnkData.getLog(), vlnkData.getOpNumber());
         for (int i = replica.getCommitNumber() + 1; i <= vlnkData.getCommitNumber(); i++) {
-            System.err.println("The recovering replica in new view is going to commit request #" + i + ": "
-                    + replica.getRequestByOpNumber(i));
             commit(i);
         }
     }

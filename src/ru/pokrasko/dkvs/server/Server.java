@@ -6,7 +6,6 @@ import ru.pokrasko.dkvs.files.RecoveryFileHandler;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.replica.Log;
 import ru.pokrasko.dkvs.replica.Replica;
-import ru.pokrasko.dkvs.replica.Request;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -83,15 +82,7 @@ class Server extends SafeRunnable {
         safeThreads.add(accepterThread);
 
         for (int i = 0; i < properties.getServerAmount(); i++) {
-//            if (i == id) {
             if (i != id) {
-//                // TODO: delete SelfConnector class
-//                SelfConnector selfConnector = new SelfConnector(this);
-//                Thread selfConnectorThread = new Thread(selfConnector);
-//                selfConnectorThread.start();
-//                safeRunnables.add(selfConnector);
-//                safeThreads.add(selfConnectorThread);
-//            } else {
                 Connector connector = new Connector(i, this);
                 Thread connectorThread = new Thread(connector);
                 connectorThread.start();

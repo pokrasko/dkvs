@@ -26,12 +26,8 @@ public class Log {
         return list.get(index - 1);
     }
 
-    public void add(Request<?, ?> request) {
+    void add(Request<?, ?> request) {
         list.add(request);
-    }
-
-    public void addAll(Log toAdd) {
-        list.addAll(toAdd.list);
     }
 
     void addAll(Log toAdd, int after, int until) {

@@ -22,11 +22,9 @@ public class PrepareCommitWaiting extends Waiting {
 
     @Override
     public void addMessage(Message message) {
-//        System.err.println("Adding prepare message to broadcast");
         assert message instanceof PrepareMessage && ((PrepareMessage) message).getOpNumber() == opNumber + 1;
         messages.add(message);
         opNumber++;
-//        System.err.println("Added successfully");
     }
 
     @Override
