@@ -1,20 +1,26 @@
-package ru.pokrasko.dkvs.replica;
+package ru.pokrasko.dkvs.quorums;
+
+import ru.pokrasko.dkvs.replica.Replica;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-class AcceptedQuorum {
+public class AcceptedQuorum {
     private Replica replica;
     private List<Boolean> confirmed;
     private int confirmedNumber;
 
-    AcceptedQuorum(Replica replica, int replicaNumber) {
+    public AcceptedQuorum(Replica replica, int replicaNumber) {
         this.replica = replica;
-        confirmed = new ArrayList<>(Collections.nCopies(replicaNumber, false));
+        this.confirmed = new ArrayList<>(Collections.nCopies(replicaNumber, false));
     }
 
-    boolean connect(int id) {
+    public boolean isConnected(int id) {
+        return confirmed.get(id);
+    }
+
+    public boolean connect(int id) {
         if (confirmed.get(id)) {
             return false;
         }
@@ -22,7 +28,7 @@ class AcceptedQuorum {
         return ++confirmedNumber == replica.getExcludingQuorumNumber();
     }
 
-    boolean disconnect(int id) {
+    public boolean disconnect(int id) {
         if (!confirmed.get(id)) {
             return false;
         }

@@ -1,11 +1,17 @@
 package ru.pokrasko.dkvs.messages;
 
+import java.util.Collections;
+import java.util.List;
+
 public class AcceptedMessage extends Message {
     private int id;
 
-    public AcceptedMessage() {}
+    public AcceptedMessage() {
+        super("ACCEPTED");
+    }
 
     public AcceptedMessage(int id) {
+        super("ACCEPTED");
         this.id = id;
     }
 
@@ -19,7 +25,15 @@ public class AcceptedMessage extends Message {
 
     @Override
     public String toString() {
-        return "ACCEPTED";
+        return _toString();
+    }
+
+    public static List<Token> tokens() {
+        return Collections.emptyList();
+    }
+
+    public static AcceptedMessage construct(Object... data) {
+        return construct(AcceptedMessage.class, new Class[] {}, data);
     }
 
     @Override

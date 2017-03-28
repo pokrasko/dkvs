@@ -1,6 +1,6 @@
 package ru.pokrasko.dkvs.parsers;
 
-import ru.pokrasko.dkvs.Properties;
+import ru.pokrasko.dkvs.files.Properties;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -10,11 +10,9 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PropertiesParser extends Parser {
-    private BufferedReader reader;
-
+public class PropertiesParser extends FileParser {
     public PropertiesParser(File propertiesFile) throws FileNotFoundException {
-        reader = new BufferedReader(new FileReader(propertiesFile));
+        super(propertiesFile);
     }
 
     public Properties parse() throws ParseException {
@@ -96,21 +94,5 @@ public class PropertiesParser extends Parser {
         } catch (UnknownHostException e) {
             throw new IllegalStateException();
         }
-    }
-
-
-    @Override
-    void readLine() throws IOException {
-        try {
-            line = reader.readLine();
-            if (line == null) {
-                throw new IOException("end of file");
-            } else if (line.equals("")) {
-                throw new IOException("got empty line");
-            }
-        } catch (IOException e) {
-            throw new IOException("couldn't read a line");
-        }
-        curIndex = 0;
     }
 }

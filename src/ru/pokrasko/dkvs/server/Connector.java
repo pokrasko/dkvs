@@ -26,12 +26,12 @@ class Connector extends SafeRunnable {
     Connector(int thatId, Server server) {
         this.server = server;
 
-        thisId = server.getId();
+        this.thisId = server.getId();
         this.thatId = thatId;
-        thatAddress = server.getServerAddress(thatId);
+        this.thatAddress = server.getServerAddress(thatId);
 
-        queue = server.getOutgoingServerMessageQueue(thatId);
-        timeout = server.getTimeout();
+        this.queue = server.getOutgoingServerMessageQueue(thatId);
+        this.timeout = server.getTimeout();
     }
 
     @Override

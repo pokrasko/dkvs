@@ -2,13 +2,13 @@ package ru.pokrasko.dkvs.parsers;
 
 import java.io.IOException;
 
-abstract class LineParser extends Parser {
+public abstract class LineParser extends Parser {
     @Override
-    void readLine() throws IOException {
+    protected void readLine() throws IOException {
         throw new IOException("the end of line");
     }
 
-    void init(String line) {
+    protected void init(String line) {
         this.line = line;
         curIndex = 0;
     }

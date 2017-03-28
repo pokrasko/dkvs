@@ -1,6 +1,6 @@
 package ru.pokrasko.dkvs.client;
 
-import ru.pokrasko.dkvs.Properties;
+import ru.pokrasko.dkvs.files.Properties;
 import ru.pokrasko.dkvs.parsers.PropertiesParser;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;

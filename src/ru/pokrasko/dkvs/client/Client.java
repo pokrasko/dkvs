@@ -1,6 +1,6 @@
 package ru.pokrasko.dkvs.client;
 
-import ru.pokrasko.dkvs.Properties;
+import ru.pokrasko.dkvs.files.Properties;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.SafeRunnable;
 import ru.pokrasko.dkvs.parsers.OperationParser;

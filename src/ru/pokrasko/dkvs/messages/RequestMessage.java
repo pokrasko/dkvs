@@ -3,10 +3,14 @@ package ru.pokrasko.dkvs.messages;
 import ru.pokrasko.dkvs.service.Operation;
 import ru.pokrasko.dkvs.replica.Request;
 
+import java.util.Collections;
+import java.util.List;
+
 public class RequestMessage extends Message {
     private Request<?, ?> request;
 
     public RequestMessage(Request<?, ?> request) {
+        super("Request");
         this.request = request;
     }
 
@@ -20,7 +24,15 @@ public class RequestMessage extends Message {
 
     @Override
     public String toString() {
-        return "Request " + request;
+        return _toString(request);
+    }
+
+    public static List<Token> tokens() {
+        return Collections.singletonList(new Token(Token.Type.OBJECT, Request.class));
+    }
+
+    public static RequestMessage construct(Object... data) {
+        return construct(RequestMessage.class, new Class[] {Request.class}, data);
     }
 
     @Override

@@ -1,6 +1,10 @@
 package ru.pokrasko.dkvs.replica;
 
+import ru.pokrasko.dkvs.parsers.LineParser;
+import ru.pokrasko.dkvs.parsers.OperationParser;
 import ru.pokrasko.dkvs.service.*;
+
+import java.text.ParseException;
 
 public class Request<A, R> {
     private Operation<A, R> operation;
@@ -36,7 +40,7 @@ public class Request<A, R> {
 
     @Override
     public String toString() {
-        return "#" + clientId + "-" + requestNumber + ": " + operation;
+        return "{" + operation + " #" + clientId + "-" + requestNumber + "}";
     }
 
     @Override
@@ -55,6 +59,39 @@ public class Request<A, R> {
             return new DeleteRequest((DeleteOperation) operation, clientId, requestNumber);
         } else {
             throw new IllegalArgumentException();
+        }
+    }
+
+    public static class RequestParser extends LineParser {
+        private OperationParser operationParser;
+
+        public RequestParser() {
+            this.operationParser = new OperationParser();
+        }
+
+        @Override
+        public Request<?, ?> parse(String line) {
+            init(line);
+
+            try {
+                readChar('<');
+                String operationLine = parseWordToDelimiter('>');
+                Operation<?, ?> operation = operationParser.parse(operationLine);
+                if (operation == null) {
+                    return null;
+                }
+                readChar('>');
+
+                readChar('#');
+                int clientId = parseInteger();
+                readChar('-');
+                int requestNumber = parseInteger();
+
+                checkEnd();
+                return Request.fromOperation(operation, clientId, requestNumber);
+            } catch (ParseException e) {
+                return (Request<?, ?>) logError("Couldn't read a request", line, e);
+            }
         }
     }
 }

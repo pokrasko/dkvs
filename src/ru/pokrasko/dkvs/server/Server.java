@@ -1,9 +1,12 @@
 package ru.pokrasko.dkvs.server;
 
-import ru.pokrasko.dkvs.Properties;
+import ru.pokrasko.dkvs.files.Properties;
 import ru.pokrasko.dkvs.SafeRunnable;
+import ru.pokrasko.dkvs.files.RecoveryFileHandler;
 import ru.pokrasko.dkvs.messages.Message;
+import ru.pokrasko.dkvs.replica.Log;
 import ru.pokrasko.dkvs.replica.Replica;
+import ru.pokrasko.dkvs.replica.Request;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -34,9 +37,9 @@ class Server extends SafeRunnable {
     private List<Thread> receiverThreads = new LinkedList<>();
     private List<Thread> senderThreads = new LinkedList<>();
 
-    private Replica replica;
+    private Support support;
 
-    Server(int id, Properties properties) {
+    Server(int id, Properties properties, RecoveryFileHandler recoveryFileHandler) {
         this.id = id;
         this.properties = properties;
 
@@ -48,7 +51,12 @@ class Server extends SafeRunnable {
             serverOutQueues.add(new LinkedBlockingDeque<>());
         }
 
-        replica = new Replica(amount, id);
+        Integer recoveryOpNumber = recoveryFileHandler.readOpNumber();
+        if (recoveryOpNumber == null) {
+            recoveryOpNumber = 0;
+        }
+        Log recoveryLog = recoveryFileHandler.readLog();
+        support = new Support(new Replica(amount, id, recoveryOpNumber, recoveryLog), getTimeout());
     }
 
     @Override
@@ -64,6 +72,10 @@ class Server extends SafeRunnable {
             return;
         }
 
+        Thread processorThread = new Thread(new Processor(inQueue, serverOutQueues, clientOutQueues, support, this));
+        processorThread.start();
+        this.processorThread = processorThread;
+
         Accepter accepter = new Accepter(this, serverSocket);
         Thread accepterThread = new Thread(accepter);
         accepterThread.start();
@@ -72,19 +84,20 @@ class Server extends SafeRunnable {
 
         for (int i = 0; i < properties.getServerAmount(); i++) {
             if (i == id) {
-                continue;
+                // TODO: delete SelfConnector class
+                SelfConnector selfConnector = new SelfConnector(this);
+                Thread selfConnectorThread = new Thread(selfConnector);
+                selfConnectorThread.start();
+                safeRunnables.add(selfConnector);
+                safeThreads.add(selfConnectorThread);
+            } else {
+                Connector connector = new Connector(i, this);
+                Thread connectorThread = new Thread(connector);
+                connectorThread.start();
+                safeRunnables.add(connector);
+                safeThreads.add(connectorThread);
             }
-
-            Connector connector = new Connector(i, this);
-            Thread connectorThread = new Thread(connector);
-            connectorThread.start();
-            safeRunnables.add(connector);
-            safeThreads.add(connectorThread);
         }
-
-        Thread processorThread = new Thread(new Processor(inQueue, serverOutQueues, clientOutQueues, replica, this));
-        processorThread.start();
-        this.processorThread = processorThread;
     }
 
     @Override
@@ -205,6 +218,12 @@ class Server extends SafeRunnable {
         resetConnected(id, isConnectedOut, isConnectedIn);
     }
 
+    void setAccepted(int id) {
+        synchronized (connectedLock) {
+            support.checkAcceptedQuorum(id, true);
+        }
+    }
+
     private void setConnected(int id, List<Boolean> thisList) {
         synchronized (connectedLock) {
             thisList.set(id, true);
@@ -217,7 +236,7 @@ class Server extends SafeRunnable {
                 return;
             }
             if (another.get(id)) {
-                replica.checkAcceptedQuorum(id, false);
+                support.checkAcceptedQuorum(id, false);
             }
         }
     }

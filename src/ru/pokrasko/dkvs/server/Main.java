@@ -1,6 +1,7 @@
 package ru.pokrasko.dkvs.server;
 
-import ru.pokrasko.dkvs.Properties;
+import ru.pokrasko.dkvs.files.Properties;
+import ru.pokrasko.dkvs.files.RecoveryFileHandler;
 import ru.pokrasko.dkvs.parsers.PropertiesParser;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
@@ -53,7 +54,7 @@ public class Main {
             return;
         }
 
-        server = new Server(id, properties);
+        server = new Server(id, properties, new RecoveryFileHandler());
         server.run();
     }
 

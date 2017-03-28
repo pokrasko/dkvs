@@ -1,10 +1,8 @@
 package ru.pokrasko.dkvs.replica;
 
-import ru.pokrasko.dkvs.messages.Message;
-import ru.pokrasko.dkvs.messages.ViewedMessage;
 import ru.pokrasko.dkvs.SafeRunnable;
+import ru.pokrasko.dkvs.quorums.VlnkQuorum;
 import ru.pokrasko.dkvs.service.Result;
-import ru.pokrasko.dkvs.service.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,41 +20,43 @@ public class Replica extends SafeRunnable {
 
     private Status status;
     private int viewNumber;
-    private Message waitingForResponse;
-    private int waitingFrom;
+    private int lastNormalViewNumber;
 
-    private List<Request<?, ?>> log = new ArrayList<>();
+    private Log log;
     private Map<Integer, Integer> clientTable = new HashMap<>();
 
     private int opNumber;
     private int commitNumber;
 
-    private AcceptedQuorum acceptedQuorum;
-    private PrepareQuorum prepareQuorum;
-
-    private Service service = new Service();
-
-    public Replica(int replicaNumber, int id) {
+    public Replica(int replicaNumber, int id, int recoveryOpNumber, Log recoveryLog) {
         this.replicaNumber = replicaNumber;
         this.failureNumber = (replicaNumber - 1) / 2;
 
         this.id = id;
 
-        acceptedQuorum = new AcceptedQuorum(this, replicaNumber);
-        prepareQuorum = new PrepareQuorum(this, replicaNumber);
+        if (recoveryOpNumber > 0 && recoveryLog.size() == recoveryOpNumber) {
+            this.commitNumber = this.opNumber = recoveryOpNumber;
+            this.log = recoveryLog;
+        } else {
+            this.log = new Log();
+        }
     }
 
     @Override
     public void run() {
         start();
-
-        status = Status.NORMAL;
-        viewNumber = 0;
-        waitingForResponse = null;
     }
 
-    int getExcludingQuorumNumber() {
+    public int getReplicaNumber() {
+        return replicaNumber;
+    }
+
+    public int getExcludingQuorumNumber() {
         return failureNumber;
+    }
+
+    public int getIncludingQuorumNumber() {
+        return failureNumber + 1;
     }
 
     public int getId() {
@@ -67,21 +67,16 @@ public class Replica extends SafeRunnable {
         return status;
     }
 
-    public Message getWaitingForResponse() {
-        return waitingForResponse;
-    }
-
-    public int getWaitingFrom() {
-        return waitingFrom;
-    }
-
-    public void setWaitingForResponse(Message message, int from) {
-        waitingForResponse = message;
-        waitingFrom = from;
-    }
-
     public int getViewNumber() {
         return viewNumber;
+    }
+
+    public int getLastNormalViewNumber() {
+        return lastNormalViewNumber;
+    }
+
+    public Log getLog() {
+        return log;
     }
 
     public int getOpNumber() {
@@ -92,6 +87,11 @@ public class Replica extends SafeRunnable {
         return commitNumber;
     }
 
+    public void setCommitNumber(int commitNumber) {
+        assert commitNumber > this.commitNumber && commitNumber <= opNumber;
+        this.commitNumber = commitNumber;
+    }
+
     public boolean isPrimary() {
         return id == viewNumber % replicaNumber;
     }
@@ -100,11 +100,8 @@ public class Replica extends SafeRunnable {
         return viewNumber % replicaNumber;
     }
 
-    public boolean checkMessageForModernity(ViewedMessage message) {
-        if (message.getViewNumber() > viewNumber) {
-            startStateTransfer();
-        }
-        return message.getViewNumber() == viewNumber;
+    public int getNewPrimaryId(int viewNumber) {
+        return viewNumber % replicaNumber;
     }
 
     public boolean isRequestOld(Request<?, ?> request) {
@@ -119,15 +116,14 @@ public class Replica extends SafeRunnable {
                 || request.getRequestNumber() > getLatestClientRequest(clientId).getRequestNumber();
     }
 
-    public Result<?> getLatestResult(Request<?, ?> request) {
-        int clientId = request.getClientId();
-        if (!clientTable.containsKey(clientId)) {
-            return null;
-        }
-        Request<?, ?> latestRequest = getLatestClientRequest(clientId);
-
-        return latestRequest.equals(request) ? latestRequest.getResult() : null;
-    }
+//    public Result<?> getLatestResult(int clientId) {
+//        if (!clientTable.containsKey(clientId)) {
+//            return null;
+//        }
+//        Request<?, ?> latestRequest = getLatestClientRequest(clientId);
+//
+//        return latestRequest.equals(request) ? latestRequest.getResult() : null;
+//    }
 
     public int appendLog(Request<?, ?> request) {
         log.add(request);
@@ -135,47 +131,68 @@ public class Replica extends SafeRunnable {
         return opNumber;
     }
 
-    public void commit(int numberToCommit) {
-        assert numberToCommit == commitNumber + 1;
-        service.commit(getRequestByOpNumber(++commitNumber));
+//    public Result<?> getResult(int opNumber) {
+//        return getRequestByOpNumber(opNumber).getResult();
+//    }
+//
+//    public int getOpClientId(int opNumber) {
+//        return getRequestByOpNumber(opNumber).getClientId();
+//    }
+//
+//    public int getOpRequestNumber(int opNumber) {
+//        return getRequestByOpNumber(opNumber).getRequestNumber();
+//    }
+
+//    public void startStateTransfer(long timeout) {}
+//
+//    public void startViewChange() {
+//        viewNumber++;
+//        status = Status.VIEW_CHANGE;
+//    }
+//
+//    public void startViewChange(int viewNumber) {
+//        this.viewNumber = viewNumber;
+//        status = Status.VIEW_CHANGE;
+//    }
+//
+//    public void finishViewChangeAsPrimary(Log log, int opNumber, int commitNumber) {
+//        this.log = log;
+//        this.opNumber = opNumber;
+//        this.commitNumber = commitNumber;
+//        status = Status.NORMAL;
+//        lastNormalViewNumber = viewNumber;
+//    }
+
+    public Request<?, ?> getRequestToCommit() {
+        return getRequestByOpNumber(++commitNumber);
     }
 
-    public Result<?> getResult(int opNumber) {
-        return getRequestByOpNumber(opNumber).getResult();
-    }
-
-    public int getOpClientId(int opNumber) {
-        return getRequestByOpNumber(opNumber).getClientId();
-    }
-
-    public int getOpRequestNumber(int opNumber) {
-        return getRequestByOpNumber(opNumber).getRequestNumber();
-    }
-
-    public void checkAcceptedQuorum(int id, boolean isConnecting) {
-        if (isConnecting && acceptedQuorum.connect(id)) {
-            run();
-        } else if (!isConnecting && acceptedQuorum.disconnect(id)) {
-            waitingForResponse = null;
-            stop();
+    public void setStatus(Status status, int viewNumber) {
+        this.status = status;
+        this.viewNumber = viewNumber;
+        if (status == Status.NORMAL) {
+            this.lastNormalViewNumber = viewNumber;
         }
     }
 
-    public void initPrepareQuorum(int opNumber) {
-        prepareQuorum.initQuorum(opNumber);
+    public Request<?, ?> getLatestClientRequest(int clientId) {
+        return clientTable.containsKey(clientId) ? getRequestByOpNumber(clientTable.get(clientId)) : null;
     }
 
-    public boolean checkPrepareQuorum(int opNumber, int id) {
-        return prepareQuorum.checkQuorum(opNumber, id);
+    public Request<?, ?> getRequestByOpNumber(int opNumber) {
+        return log.get(opNumber);
     }
 
-    public void startStateTransfer() {}
-
-    private Request<?, ?> getRequestByOpNumber(int opNumber) {
-        return log.get(opNumber - 1);
+    public void recovery(VlnkQuorum.Data vlnkData) {
+        assert vlnkData.getOpNumber() - opNumber == vlnkData.getLog().size();
+        log.addAll(vlnkData.getLog());
+        opNumber = vlnkData.getOpNumber();
+        commitNumber = vlnkData.getCommitNumber();
     }
 
-    private Request<?, ?> getLatestClientRequest(int clientId) {
-        return getRequestByOpNumber(clientTable.get(clientId));
+    public void updateLnk(Log log, int opNumber, int commitNumber) {
+        log.addAll(log, this.commitNumber, opNumber);
+        this.opNumber = opNumber;
+        this.commitNumber = commitNumber;
     }
 }

@@ -1,20 +1,25 @@
 package ru.pokrasko.dkvs.messages;
 
-public class CommitMessage extends ViewedMessage {
-    private int commitNumber;
+import java.util.Arrays;
+import java.util.List;
 
-    public CommitMessage(int viewNumber, int commitNumber) {
-        super(viewNumber);
-        this.commitNumber = commitNumber;
-    }
-
-    public int getCommitNumber() {
-        return commitNumber;
+public class CommitMessage extends CommitNumberMessage {
+    public CommitMessage(Integer viewNumber, Integer commitNumber) {
+        super("Commit", viewNumber, commitNumber);
     }
 
     @Override
     public String toString() {
-        return "Commit " + viewNumber + " " + commitNumber;
+        return _toString(viewNumber, commitNumber);
+    }
+
+    public static List<Token> tokens() {
+        return Arrays.asList(new Token(Token.Type.INTEGER, null),
+                new Token(Token.Type.INTEGER, null));
+    }
+
+    public static CommitMessage construct(Object... data) {
+        return construct(CommitMessage.class, new Class[] {Integer.class, Integer.class}, data);
     }
 
     @Override

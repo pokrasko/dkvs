@@ -4,11 +4,11 @@ import java.io.IOException;
 import java.text.ParseException;
 
 abstract class Parser {
-    String line = "";
+    protected String line = "";
     int tokenBegin;
-    int curIndex;
+    protected int curIndex;
 
-    int parseInteger() throws ParseException {
+    protected int parseInteger() throws ParseException {
         if (curIndex == line.length()) {
             try {
                 readLine();
@@ -45,6 +45,43 @@ abstract class Parser {
         }
     }
 
+    long parseLong() throws ParseException {
+        if (curIndex == line.length()) {
+            try {
+                readLine();
+            } catch (IOException e) {
+                throw new ParseException("Couldn't read a long (" + e.getMessage() + ")", -1);
+            }
+        }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
+        tokenBegin = curIndex;
+
+        boolean isNegative = false;
+        if (currentChar() == '-') {
+            isNegative = true;
+            curIndex++;
+        }
+        if (!Character.isDigit(currentChar())) {
+            throw new ParseException("Couldn't read a long (non-digit symbol)", curIndex);
+        }
+        int begin = curIndex;
+        while (curIndex < line.length() && Character.isDigit(currentChar())) {
+            curIndex++;
+        }
+
+        try {
+            long result = Long.parseLong(line.substring(begin, curIndex));
+            if (isNegative) {
+                result *= -1;
+            }
+            return result;
+        } catch (NumberFormatException e) {
+            throw new ParseException("Couldn't read a long (" + e.getMessage() + ")", begin);
+        }
+    }
+
     byte parseByte() throws ParseException {
         if (curIndex == line.length()) {
             try {
@@ -73,7 +110,7 @@ abstract class Parser {
         }
     }
 
-    String parsePureWord() throws ParseException {
+    protected String parsePureWord() throws ParseException {
         if (curIndex == line.length()) {
             try {
                 readLine();
@@ -116,7 +153,29 @@ abstract class Parser {
         return line.substring(begin, curIndex);
     }
 
-    void readChar(char expected) throws ParseException {
+    protected String parseWordToDelimiter(char delimiter) throws ParseException {
+        if (curIndex == line.length()) {
+            try {
+                readLine();
+            } catch (IOException e) {
+                throw new ParseException("Couldn't read a word (" + e.getMessage() + ")", -1);
+            }
+        }
+        while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
+            curIndex++;
+        }
+        tokenBegin = curIndex;
+
+        int delimiterIndex = line.indexOf("" + delimiter, curIndex);
+        if (delimiterIndex == -1) {
+            throw new ParseException("Couldn't read a word (delimiter '" + delimiter + "' not found')", curIndex);
+        }
+        String word = line.substring(curIndex, delimiterIndex);
+        curIndex = delimiterIndex;
+        return word;
+    }
+
+    protected void readChar(char expected) throws ParseException {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
@@ -126,7 +185,7 @@ abstract class Parser {
         curIndex++;
     }
 
-    void checkEnd() throws ParseException {
+    protected void checkEnd() throws ParseException {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
@@ -151,5 +210,5 @@ abstract class Parser {
         return null;
     }
 
-    abstract void readLine() throws IOException;
+    protected abstract void readLine() throws IOException;
 }

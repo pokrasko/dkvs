@@ -15,7 +15,7 @@ public abstract class Operation<A, R> {
 
     @Override
     public String toString() {
-        return name + " " + argument;
+        return "<" + name + " " + argument + ">";
     }
 
     public abstract Result<R> initResult(R result);

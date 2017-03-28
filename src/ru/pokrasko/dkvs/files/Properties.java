@@ -1,4 +1,4 @@
-package ru.pokrasko.dkvs;
+package ru.pokrasko.dkvs.files;
 
 import java.net.InetSocketAddress;
 import java.util.List;

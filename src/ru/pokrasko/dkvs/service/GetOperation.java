@@ -10,7 +10,6 @@ public class GetOperation extends Operation<String, String> {
         return new GetResult(result);
     }
 
-
     public class GetResult extends Result<String> {
         GetResult(String result) {
             super(result);
