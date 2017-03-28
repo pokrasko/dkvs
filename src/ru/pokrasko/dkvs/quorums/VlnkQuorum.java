@@ -14,7 +14,7 @@ public abstract class VlnkQuorum extends BooleanQuorum {
 
     public Data check(int replicaId, int viewNumber, Log log, int opNumber, int commitNumber) {
         checkVlnk(replicaId, viewNumber, log, opNumber, commitNumber);
-        return check() ? data : null;
+        return check(replicaId, true) ? data : null;
     }
 
     protected abstract void checkVlnk(int replicaId,

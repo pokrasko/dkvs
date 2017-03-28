@@ -44,6 +44,7 @@ class Support extends SafeRunnable {
 
     private STState stateTransferState;
 
+    private long timeToStart;
     private int timeout;
 
 
@@ -62,7 +63,7 @@ class Support extends SafeRunnable {
         return replica;
     }
 
-    public STState getStateTransferState() {
+    STState getStateTransferState() {
         return stateTransferState;
     }
 
@@ -183,7 +184,18 @@ class Support extends SafeRunnable {
 //    }
 
     void startIdentification(int id) {
+        timeToStart = System.currentTimeMillis() + timeout * 2;
         waiting = new SimpleWaiting(new NewReplicaMessage(id), true, 0L, timeout);
+    }
+
+    boolean checkTimeToStart() {
+        if (System.currentTimeMillis() >= timeToStart && acceptedQuorum.check()) {
+            // It's time to start the replica!
+            startReplica();
+            return true;
+        } else {
+            return false;
+        }
     }
 
 //    void removeWaiting(Class<? extends Message> messageClass) {
@@ -208,23 +220,30 @@ class Support extends SafeRunnable {
     }
 
     void checkAcceptedQuorum(int id, boolean isConnecting) {
-        if (isConnecting && acceptedQuorum.connect(id)) {
-            if (replica.getOpNumber() == 0) {
-                // Starting the replica from scratch: setting status to NORMAL
-                waiting = null;
-                setStatus(Replica.Status.NORMAL, 0);
-            } else {
-                // Recovering the replica, last known operation number is recoveryOpNumber,
-                // setting status to RECOVERY, broadcasting Recovery message
-                RecoveryMessage recoveryMessage = new RecoveryMessage(replica.getId(), replica.getOpNumber());
-                recoveryNonce = recoveryMessage.getNonce();
-                waiting = new SimpleWaiting(recoveryMessage, true, 0L, timeout / 2);
-                setStatus(Replica.Status.RECOVERY, 0);
-            }
-            replica.run();
+        if (isConnecting && acceptedQuorum.connect(id) &&
+                (System.currentTimeMillis() >= timeToStart || acceptedQuorum.checkFull())) {
+            // It's time to start the replica!
+            startReplica();
         } else if (!isConnecting && acceptedQuorum.disconnect(id)) {
             replica.stop();
         }
+    }
+
+    private void startReplica() {
+        if (replica.getOpNumber() == 0) {
+            // Starting the replica from scratch: setting status to NORMAL
+            waiting = null;
+            setStatus(Replica.Status.NORMAL, 0);
+        } else {
+            // Recovering the replica, last known operation number is recoveryOpNumber,
+            // setting status to RECOVERY, broadcasting Recovery message
+            RecoveryMessage recoveryMessage = new RecoveryMessage(replica.getId(), replica.getOpNumber());
+            recoveryNonce = recoveryMessage.getNonce();
+            waiting = new SimpleWaiting(recoveryMessage, true, 0L, timeout / 2);
+            setStatus(Replica.Status.RECOVERY, 0);
+        }
+
+        replica.run();
     }
 
 //    int checkPrepareQuorum(int opNumber, int id) {
@@ -248,9 +267,14 @@ class Support extends SafeRunnable {
     void setStatus(Replica.Status status, int viewNumber) {
         replica.setStatus(status, viewNumber);
 
-        if (status == Replica.Status.NORMAL && replica.isPrimary()) {
-            waiting = new PrepareCommitWaiting(viewNumber, replica.getOpNumber(), timeout / 2, timeout / 2);
-            quorum = new PrepareOkQuorum(replica.getExcludingQuorumNumber(), replica.getReplicaNumber());
+        if (status == Replica.Status.NORMAL) {
+            if (replica.isPrimary()) {
+                waiting = new PrepareCommitWaiting(viewNumber, replica.getOpNumber(), timeout / 2, timeout / 2);
+                quorum = new PrepareOkQuorum(replica.getExcludingQuorumNumber(), replica.getReplicaNumber());
+            } else {
+                waiting = null;
+                quorum = null;
+            }
         } else if (status == Replica.Status.VIEW_CHANGE) {
             waiting = new SimpleWaiting(new StartViewChangeMessage(viewNumber, replica.getId()), true, 0L, timeout / 2);
             startViewChangeQuorum = new StartViewChangeQuorum(replica.getExcludingQuorumNumber(),
@@ -264,6 +288,7 @@ class Support extends SafeRunnable {
                 quorum = null;
             }
             vcSecondStage = false;
+        } else {
             waiting = new SimpleWaiting(new RecoveryMessage(replica.getId(), replica.getOpNumber()),
                     true, 0L, timeout / 2);
             quorum = new RecoveryResponseQuorum(replica.getIncludingQuorumNumber(), replica.getReplicaNumber());
@@ -284,12 +309,15 @@ class Support extends SafeRunnable {
     }
 
     void checkForCommit(int commitNumber) {
+        System.err.println("Starting checkForCommit");
         int newCommitNumber = Math.min(commitNumber, replica.getOpNumber());
+        System.err.println("Old commit number is " + replica.getCommitNumber() + ", new one is " + newCommitNumber);
         if (newCommitNumber > replica.getCommitNumber()) {
-            for (int i = replica.getCommitNumber() + 1; i < newCommitNumber; i++) {
+            for (int i = replica.getCommitNumber() + 1; i <= newCommitNumber; i++) {
+                System.err.println("The backup is going to commit request #" + i + ": "
+                        + replica.getRequestByOpNumber(i));
                 commit(i);
             }
-            replica.setCommitNumber(newCommitNumber);
         }
 
         if (commitNumber > replica.getOpNumber()) {

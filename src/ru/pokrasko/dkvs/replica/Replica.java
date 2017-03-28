@@ -1,12 +1,8 @@
 package ru.pokrasko.dkvs.replica;
 
 import ru.pokrasko.dkvs.SafeRunnable;
-import ru.pokrasko.dkvs.quorums.VlnkQuorum;
-import ru.pokrasko.dkvs.service.Result;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Replica extends SafeRunnable {
@@ -87,11 +83,6 @@ public class Replica extends SafeRunnable {
         return commitNumber;
     }
 
-    public void setCommitNumber(int commitNumber) {
-        assert commitNumber > this.commitNumber && commitNumber <= opNumber;
-        this.commitNumber = commitNumber;
-    }
-
     public boolean isPrimary() {
         return id == viewNumber % replicaNumber;
     }
@@ -168,6 +159,7 @@ public class Replica extends SafeRunnable {
     }
 
     public void setStatus(Status status, int viewNumber) {
+        System.out.println("New status: " + status + " in view #" + viewNumber);
         this.status = status;
         this.viewNumber = viewNumber;
         if (status == Status.NORMAL) {
@@ -183,16 +175,8 @@ public class Replica extends SafeRunnable {
         return log.get(opNumber);
     }
 
-    public void recovery(VlnkQuorum.Data vlnkData) {
-        assert vlnkData.getOpNumber() - opNumber == vlnkData.getLog().size();
-        log.addAll(vlnkData.getLog());
-        opNumber = vlnkData.getOpNumber();
-        commitNumber = vlnkData.getCommitNumber();
-    }
-
-    public void updateLnk(Log log, int opNumber, int commitNumber) {
+    public void updateLog(Log log, int opNumber) {
         log.addAll(log, this.commitNumber, opNumber);
         this.opNumber = opNumber;
-        this.commitNumber = commitNumber;
     }
 }

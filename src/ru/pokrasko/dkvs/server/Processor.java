@@ -2,6 +2,7 @@ package ru.pokrasko.dkvs.server;
 
 import ru.pokrasko.dkvs.messages.*;
 import ru.pokrasko.dkvs.quorums.VlnkQuorum;
+import ru.pokrasko.dkvs.replica.Log;
 import ru.pokrasko.dkvs.replica.Replica;
 import ru.pokrasko.dkvs.replica.Request;
 
@@ -198,7 +199,7 @@ class Processor implements Runnable {
                 }
 
                 // Any replica protocol message is handled only when the replica is running
-                if (!replica.isRunning()) {
+                if (!replica.isRunning() && !support.checkTimeToStart()) {
                     resendWaitingMessages();
                     continue;
                 }
@@ -240,7 +241,7 @@ class Processor implements Runnable {
                 try {
                     // If the replica is in normal status, then messages of all protocols are handled
                     if (status == Replica.Status.NORMAL) {
-                        // RECOVERY PROTOCOL
+                        // RECOVERY PROTOCOL (IN NORMAL STATUS)
                         if (message instanceof RecoveryMessage) {
                             RecoveryMessage recoveryMessage = (RecoveryMessage) message;
                             sendMessageToReplica(recoveryMessage.getReplicaId(),
@@ -254,7 +255,7 @@ class Processor implements Runnable {
                                             replica.getId()));
                         }
 
-                        // VIEW CHANGE PROTOCOL
+                        // VIEW CHANGE PROTOCOL (IN NORMAL STATUS)
                         // If a view change protocol message is received
                         // and its view number is larger than this one's
                         // then this replica's view number is updated
@@ -267,13 +268,12 @@ class Processor implements Runnable {
                             }
 
                             if (message instanceof StartViewMessage) {
-                                support.setStatus(Replica.Status.NORMAL, viewNumber);
-
                                 StartViewMessage startViewMessage = (StartViewMessage) message;
-                                if (startViewMessage.getOpNumber() - replica.getCommitNumber()
-                                        > startViewMessage.getLog().size()) {
-                                    support.startStateTransferUpgrade(replica.getNewPrimaryId(viewNumber));
-                                }
+                                handleNewView(viewNumber,
+                                        startViewMessage.getLog(),
+                                        startViewMessage.getOpNumber(),
+                                        startViewMessage.getCommitNumber(),
+                                        replica.getNewPrimaryId(viewNumber));
                             } else {
                                 support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
                             }
@@ -319,14 +319,9 @@ class Processor implements Runnable {
                                         prepareOkMessage.getOpNumber());
                                 if (commitNumber > 0) {
                                     for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
-                                        support.commit(i);
-                                        Request<?, ?> request = replica.getRequestByOpNumber(i);
-                                        if (!replica.isRequestOld(request)) {
-                                            sendMessageToClient(request.getClientId(),
-                                                    new ReplyMessage(replica.getViewNumber(),
-                                                            request.getRequestNumber(),
-                                                            request.getResult()));
-                                        }
+                                        System.err.println("The primary is going to commit request #" + i + ": "
+                                                + replica.getRequestByOpNumber(i));
+                                        commit(i);
                                     }
                                 }
 //                            } else {
@@ -359,17 +354,13 @@ class Processor implements Runnable {
                                 }
                             }
 
-                            int commitNumber;
-                            if (message instanceof PrepareMessage) {
-                                commitNumber = ((PrepareMessage) message).getCommitNumber();
-                            } else {
-                                commitNumber = ((CommitMessage) message).getCommitNumber();
-                            }
+                            int commitNumber = ((CommitNumberMessage) message).getCommitNumber();
                             support.checkForCommit(commitNumber);
                         }
 
                         // If the replica is in view change status, then only view change protocol messages are handled
                     } else if (status == Replica.Status.VIEW_CHANGE) {
+                        // VIEW CHANGE PROTOCOL (IN VIEW CHANGE STATUS)
                         if (!(message instanceof StartViewChangeMessage || message instanceof DoViewChangeMessage
                                 || message instanceof StartViewMessage)) {
 //                            handleWrongMessage(message, status);
@@ -379,13 +370,12 @@ class Processor implements Runnable {
                         int viewNumber = ((ViewNumberMessage) message).getViewNumber();
                         if (viewNumber > replica.getViewNumber()) {
                             if (message instanceof StartViewMessage) {
-                                support.setStatus(Replica.Status.NORMAL, viewNumber);
-
                                 StartViewMessage startViewMessage = (StartViewMessage) message;
-                                if (startViewMessage.getOpNumber() - replica.getCommitNumber()
-                                        > startViewMessage.getLog().size()) {
-                                    support.startStateTransferUpgrade(replica.getNewPrimaryId(viewNumber));
-                                }
+                                handleNewView(viewNumber,
+                                        startViewMessage.getLog(),
+                                        startViewMessage.getOpNumber(),
+                                        startViewMessage.getCommitNumber(),
+                                        replica.getNewPrimaryId(viewNumber));
                             } else {
                                 support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
                             }
@@ -403,13 +393,9 @@ class Processor implements Runnable {
                                             doViewChangeMessage.getOpNumber(),
                                             doViewChangeMessage.getCommitNumber());
                                     if (vlnkData != null) {
-                                        support.setStatus(Replica.Status.NORMAL, replica.getViewNumber());
-                                        if (vlnkData.getOpNumber() - replica.getCommitNumber()
-                                                > vlnkData.getLog().size()) {
-                                            support.startStateTransferUpgrade(support.getMaxViewNumberReplicaId());
-                                        } else {
-                                            replica.updateLnk(vlnkData.getLog(),
-                                                    vlnkData.getOpNumber(), vlnkData.getCommitNumber());
+                                        if (handleNewView(replica.getViewNumber(), vlnkData.getLog(),
+                                                vlnkData.getOpNumber(), vlnkData.getCommitNumber(),
+                                                support.getMaxViewNumberReplicaId())) {
                                             broadcastMessageToReplicas(new StartViewMessage(replica.getViewNumber(),
                                                     replica.getLog()
                                                             .getSuffix(DoViewChangeMessage.VIEW_CHANGE_LOG_SUFFIX_SIZE),
@@ -421,18 +407,18 @@ class Processor implements Runnable {
 //                                    handleWrongMessage(message, status);
                                 }
                             } else {
-                                support.setStatus(Replica.Status.NORMAL, viewNumber);
-
                                 StartViewMessage startViewMessage = (StartViewMessage) message;
-                                if (startViewMessage.getOpNumber() - replica.getCommitNumber()
-                                        > startViewMessage.getLog().size()) {
-                                    support.startStateTransferUpgrade(replica.getNewPrimaryId(viewNumber));
-                                }
+                                handleNewView(viewNumber,
+                                        startViewMessage.getLog(),
+                                        startViewMessage.getOpNumber(),
+                                        startViewMessage.getCommitNumber(),
+                                        replica.getNewPrimaryId(viewNumber));
                             }
                         }
 
                         // If the replica is in recovery status, then only recovery protocol messages are handled
                     } else {
+                        // RECOVERY PROTOCOL (IN RECOVERY STATUS)
                         if (!(message instanceof RecoveryResponseMessage)) {
 //                            handleWrongMessage(message, status);
                             continue;
@@ -449,8 +435,7 @@ class Processor implements Runnable {
                                 recoveryResponseMessage.getOpNumber(),
                                 recoveryResponseMessage.getCommitNumber());
                         if (vlnkData != null) {
-                            replica.recovery(vlnkData);
-                            support.setStatus(Replica.Status.NORMAL, vlnkData.getViewNumber());
+                            recovery(vlnkData);
                         }
                     }
                 } finally {
@@ -517,6 +502,48 @@ class Processor implements Runnable {
 
     private void handleNullMessage() throws InterruptedException {
         resendWaitingMessages();
+    }
+
+    private void commit(int opNumber) throws InterruptedException {
+        support.commit(opNumber);
+        Request<?, ?> request = replica.getRequestByOpNumber(opNumber);
+        if (!replica.isRequestOld(request)) {
+            sendMessageToClient(request.getClientId(),
+                    new ReplyMessage(replica.getViewNumber(),
+                            request.getRequestNumber(),
+                            request.getResult()));
+        }
+    }
+
+    private boolean handleNewView(int viewNumber, Log log, int opNumber, int commitNumber,
+                                  int stReceiverId) throws InterruptedException {
+        support.setStatus(Replica.Status.NORMAL, viewNumber);
+
+        if (opNumber - replica.getCommitNumber() > log.size()) {
+            support.startStateTransferUpgrade(stReceiverId);
+            return false;
+        } else {
+            replica.updateLog(log, opNumber);
+            for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
+                System.err.println("The replica in new view is going to commit request #" + i + ": "
+                        + replica.getRequestByOpNumber(i));
+                commit(i);
+            }
+            return true;
+        }
+    }
+
+    private void recovery(VlnkQuorum.Data vlnkData) throws InterruptedException {
+        assert vlnkData.getOpNumber() - replica.getCommitNumber() == vlnkData.getLog().size();
+
+        support.setStatus(Replica.Status.NORMAL, vlnkData.getViewNumber());
+
+        replica.updateLog(vlnkData.getLog(), vlnkData.getOpNumber());
+        for (int i = replica.getCommitNumber() + 1; i <= vlnkData.getCommitNumber(); i++) {
+            System.err.println("The recovering replica in new view is going to commit request #" + i + ": "
+                    + replica.getRequestByOpNumber(i));
+            commit(i);
+        }
     }
 
 //    private void handleWrongMessage(Message message, Replica.Status status) {

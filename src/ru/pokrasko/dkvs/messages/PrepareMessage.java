@@ -5,16 +5,14 @@ import ru.pokrasko.dkvs.replica.Request;
 import java.util.Arrays;
 import java.util.List;
 
-public class PrepareMessage extends ViewNumberMessage {
+public class PrepareMessage extends CommitNumberMessage {
     private Request<?, ?> request;
     private int opNumber;
-    private int commitNumber;
 
     public PrepareMessage(Integer viewNumber, Request<?, ?> request, Integer opNumber, Integer commitNumber) {
-        super("Prepare", viewNumber);
+        super("Prepare", viewNumber, commitNumber);
         this.request = request;
         this.opNumber = opNumber;
-        this.commitNumber = commitNumber;
     }
 
     public Request<?, ?> getRequest() {
@@ -23,10 +21,6 @@ public class PrepareMessage extends ViewNumberMessage {
 
     public int getOpNumber() {
         return opNumber;
-    }
-
-    public int getCommitNumber() {
-        return commitNumber;
     }
 
     @Override

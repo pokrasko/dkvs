@@ -34,16 +34,16 @@ public class Log {
         list.addAll(toAdd.list);
     }
 
-    public void addAll(Log toAdd, int after, int until) {
+    void addAll(Log toAdd, int after, int until) {
         list.addAll(toAdd.list.subList(toAdd.list.size() + until - after, toAdd.list.size()));
     }
 
     public Log getAfter(int after) {
-        return new Log(list.subList(after, list.size()));
+        return new Log(list.subList(Math.max(after, 0), list.size()));
     }
 
     public Log getSuffix(int size) {
-        return new Log(list.subList(list.size() - size, size));
+        return new Log(list.subList(Math.max(list.size() - size, 0), list.size()));
     }
 
     @Override
@@ -65,11 +65,7 @@ public class Log {
             List<Request<?, ?>> list = new ArrayList<>();
             try {
                 while (true) {
-                    try {
-                        readChar('{');
-                    } catch (ParseException e) {
-                        break;
-                    }
+                    readChar('{');
 
                     String requestLine = parseWordToDelimiter('}');
                     Request<?, ?> request = requestParser.parse(requestLine);
@@ -80,6 +76,12 @@ public class Log {
                     }
 
                     readChar('}');
+
+                    try {
+                        readChar(',');
+                    } catch (ParseException e) {
+                        break;
+                    }
                 }
             } catch (ParseException e) {
                 return (Log) logError("Couldn't read a log", line, e);

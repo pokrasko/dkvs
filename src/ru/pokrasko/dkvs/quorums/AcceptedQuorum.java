@@ -10,14 +10,24 @@ public class AcceptedQuorum {
     private Replica replica;
     private List<Boolean> confirmed;
     private int confirmedNumber;
+    private int fullNumber;
 
     public AcceptedQuorum(Replica replica, int replicaNumber) {
         this.replica = replica;
         this.confirmed = new ArrayList<>(Collections.nCopies(replicaNumber, false));
+        this.fullNumber = replicaNumber - 1;
     }
 
     public boolean isConnected(int id) {
         return confirmed.get(id);
+    }
+
+    public boolean check() {
+        return confirmedNumber >= replica.getExcludingQuorumNumber();
+    }
+
+    public boolean checkFull() {
+        return confirmedNumber == fullNumber;
     }
 
     public boolean connect(int id) {

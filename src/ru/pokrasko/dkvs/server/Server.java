@@ -83,14 +83,15 @@ class Server extends SafeRunnable {
         safeThreads.add(accepterThread);
 
         for (int i = 0; i < properties.getServerAmount(); i++) {
-            if (i == id) {
-                // TODO: delete SelfConnector class
-                SelfConnector selfConnector = new SelfConnector(this);
-                Thread selfConnectorThread = new Thread(selfConnector);
-                selfConnectorThread.start();
-                safeRunnables.add(selfConnector);
-                safeThreads.add(selfConnectorThread);
-            } else {
+//            if (i == id) {
+            if (i != id) {
+//                // TODO: delete SelfConnector class
+//                SelfConnector selfConnector = new SelfConnector(this);
+//                Thread selfConnectorThread = new Thread(selfConnector);
+//                selfConnectorThread.start();
+//                safeRunnables.add(selfConnector);
+//                safeThreads.add(selfConnectorThread);
+//            } else {
                 Connector connector = new Connector(i, this);
                 Thread connectorThread = new Thread(connector);
                 connectorThread.start();

@@ -28,5 +28,7 @@ public class Service {
         } else {
             throw new IllegalArgumentException();
         }
+
+        System.err.println("Commited request " + request + ", map = " + map);
     }
 }

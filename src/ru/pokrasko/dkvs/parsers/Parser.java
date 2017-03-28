@@ -179,7 +179,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
-        if (currentChar() != expected) {
+        if (curIndex == line.length()) {
+            throw new ParseException("(reached end of string)", curIndex);
+        } else if (currentChar() != expected) {
             throw new ParseException("(expected '" + expected + "', but got '" + currentChar() + "'", curIndex);
         }
         curIndex++;
