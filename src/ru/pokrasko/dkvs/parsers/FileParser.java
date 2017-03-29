@@ -23,4 +23,8 @@ public abstract class FileParser extends Parser {
         }
         curIndex = 0;
     }
+
+    public void close() throws IOException {
+        reader.close();
+    }
 }

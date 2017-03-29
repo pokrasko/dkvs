@@ -1,7 +1,9 @@
 package ru.pokrasko.dkvs.server;
 
 import ru.pokrasko.dkvs.SafeRunnable;
+import ru.pokrasko.dkvs.files.LogFileHandler;
 import ru.pokrasko.dkvs.replica.Log;
+import ru.pokrasko.dkvs.replica.Request;
 import ru.pokrasko.dkvs.waiting.*;
 import ru.pokrasko.dkvs.messages.*;
 import ru.pokrasko.dkvs.quorums.*;
@@ -20,6 +22,7 @@ class Support extends SafeRunnable {
     private Replica replica;
 
     private Service service = new Service();
+    private LogFileHandler logFileHandler;
 
     private Waiting waiting;
     private AcceptedQuorum acceptedQuorum;
@@ -36,8 +39,10 @@ class Support extends SafeRunnable {
     private int timeout;
 
 
-    Support(Replica replica, int timeout) {
+    Support(Replica replica, LogFileHandler logFileHandler, int timeout) {
         this.replica = replica;
+        this.logFileHandler = logFileHandler;
+
         this.timeout = timeout;
 
         this.acceptedQuorum = new AcceptedQuorum(replica, replica.getReplicaNumber());
@@ -56,12 +61,25 @@ class Support extends SafeRunnable {
         start();
     }
 
+    @Override
+    public boolean stop() {
+        if (!super.stop()) {
+            return false;
+        }
+
+        logFileHandler.close();
+
+        return true;
+    }
+
     boolean commit(int numberToCommit) {
         if (numberToCommit != replica.getCommitNumber() + 1 || numberToCommit > replica.getOpNumber()) {
             return false;
         }
 
-        service.commit(replica.getRequestToCommit());
+        Request<?, ?> request = replica.getRequestToCommit();
+        service.commit(request);
+        logFileHandler.appendRequest(request);
         return true;
     }
 
@@ -109,8 +127,8 @@ class Support extends SafeRunnable {
         }
     }
 
-    boolean isPrimaryConnected() {
-        return acceptedQuorum.isConnected(replica.getPrimaryId());
+    boolean isReplicaAccepted(int replicaId) {
+        return acceptedQuorum.isConnected(replicaId);
     }
 
     void checkAcceptedQuorum(int id, boolean isConnecting) {
@@ -123,6 +141,10 @@ class Support extends SafeRunnable {
         }
     }
 
+    List<Boolean> getAcceptedList() {
+        return acceptedQuorum.getConfirmed();
+    }
+
     private void startReplica() {
         if (replica.getOpNumber() == 0) {
             // Starting the replica from scratch: setting status to NORMAL
@@ -131,7 +153,7 @@ class Support extends SafeRunnable {
         } else {
             // Recovering the replica, last known operation number is recoveryOpNumber,
             // setting status to RECOVERY, broadcasting Recovery message
-            RecoveryMessage recoveryMessage = new RecoveryMessage(replica.getId(), replica.getOpNumber());
+            RecoveryMessage recoveryMessage = new RecoveryMessage(replica.getId(), replica.getCommitNumber());
             recoveryNonce = recoveryMessage.getNonce();
             waiting = new SimpleWaiting(recoveryMessage, true, 0L, timeout / 2);
             setStatus(Replica.Status.RECOVERY, 0);

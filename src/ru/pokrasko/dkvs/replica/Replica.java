@@ -24,14 +24,14 @@ public class Replica extends SafeRunnable {
     private int opNumber;
     private int commitNumber;
 
-    public Replica(int replicaNumber, int id, int recoveryOpNumber, Log recoveryLog) {
+    public Replica(int replicaNumber, int id, Log recoveryLog) {
         this.replicaNumber = replicaNumber;
         this.failureNumber = (replicaNumber - 1) / 2;
 
         this.id = id;
 
-        if (recoveryOpNumber > 0 && recoveryLog.size() == recoveryOpNumber) {
-            this.commitNumber = this.opNumber = recoveryOpNumber;
+        if (recoveryLog != null) {
+            this.commitNumber = this.opNumber = recoveryLog.size();
             this.log = recoveryLog;
         } else {
             this.log = new Log();
@@ -40,6 +40,11 @@ public class Replica extends SafeRunnable {
 
     @Override
     public void run() {
+        if (commitNumber < opNumber) {
+            log.cut(commitNumber);
+            opNumber = commitNumber;
+        }
+
         start();
     }
 

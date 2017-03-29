@@ -2,7 +2,7 @@ package ru.pokrasko.dkvs.server;
 
 import ru.pokrasko.dkvs.files.Properties;
 import ru.pokrasko.dkvs.SafeRunnable;
-import ru.pokrasko.dkvs.files.RecoveryFileHandler;
+import ru.pokrasko.dkvs.files.LogFileHandler;
 import ru.pokrasko.dkvs.messages.Message;
 import ru.pokrasko.dkvs.replica.Log;
 import ru.pokrasko.dkvs.replica.Replica;
@@ -38,7 +38,7 @@ class Server extends SafeRunnable {
 
     private Support support;
 
-    Server(int id, Properties properties, RecoveryFileHandler recoveryFileHandler) {
+    Server(int id, Properties properties, LogFileHandler logFileHandler) {
         this.id = id;
         this.properties = properties;
 
@@ -50,12 +50,8 @@ class Server extends SafeRunnable {
             serverOutQueues.add(new LinkedBlockingDeque<>());
         }
 
-        Integer recoveryOpNumber = recoveryFileHandler.readOpNumber();
-        if (recoveryOpNumber == null) {
-            recoveryOpNumber = 0;
-        }
-        Log recoveryLog = recoveryFileHandler.readLog();
-        support = new Support(new Replica(amount, id, recoveryOpNumber, recoveryLog), getTimeout());
+        Log recoveryLog = logFileHandler.readLog();
+        support = new Support(new Replica(amount, id, recoveryLog), logFileHandler, getTimeout());
     }
 
     @Override
@@ -104,6 +100,7 @@ class Server extends SafeRunnable {
         if (processorThread != null) {
             processorThread.interrupt();
         }
+        support.stop();
 
         try {
             for (Thread safeThread : safeThreads) {

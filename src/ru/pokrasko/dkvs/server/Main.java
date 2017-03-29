@@ -1,13 +1,14 @@
 package ru.pokrasko.dkvs.server;
 
 import ru.pokrasko.dkvs.files.Properties;
-import ru.pokrasko.dkvs.files.RecoveryFileHandler;
+import ru.pokrasko.dkvs.files.LogFileHandler;
 import ru.pokrasko.dkvs.parsers.PropertiesParser;
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.net.URL;
 import java.text.ParseException;
 
@@ -29,7 +30,7 @@ public class Main {
         }
 
         PropertiesParser propertiesParser;
-        if (args.length > 1 && args[1] != null) {
+        if (args.length == 3 && args[1] != null) {
             File propertiesFile = new File(args[1]);
             propertiesParser = getPropertiesParser(propertiesFile);
         } else {
@@ -54,7 +55,25 @@ public class Main {
             return;
         }
 
-        server = new Server(id, properties, new RecoveryFileHandler());
+        LogFileHandler logFileHandler;
+        try {
+            if (args.length == 4 && args[2] != null && args[3].equals("-r")) {
+                logFileHandler = new LogFileHandler(new File(args[2]), true);
+            } else if (args.length == 3 && args[2] != null) {
+                logFileHandler = new LogFileHandler(new File(args[2]), false);
+            } else if (args.length == 2 && args[1].equals("-r")){
+                logFileHandler = new LogFileHandler(true);
+            } else if (args.length == 1) {
+                logFileHandler = new LogFileHandler(false);
+            } else {
+                System.err.println("Format: <exe-name> [<dkvs properties name> <log file name>] [-a]");
+                return;
+            }
+        } catch (IOException e) {
+            System.err.println("Couldn't create/read log file");
+            return;
+        }
+        server = new Server(id, properties, logFileHandler);
         server.run();
     }
 

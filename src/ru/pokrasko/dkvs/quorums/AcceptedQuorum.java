@@ -18,6 +18,10 @@ public class AcceptedQuorum {
         this.fullNumber = replicaNumber - 1;
     }
 
+    public List<Boolean> getConfirmed() {
+        return confirmed;
+    }
+
     public boolean isConnected(int id) {
         return confirmed.get(id);
     }

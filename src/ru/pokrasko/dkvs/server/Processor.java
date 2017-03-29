@@ -58,8 +58,11 @@ class Processor implements Runnable {
 
                 // Accepting new replicas is handled outside the replica protocol
                 if (message instanceof NewReplicaMessage) {
-                    NewReplicaMessage newReplicaMessage = (NewReplicaMessage) message;
-                    sendMessageToReplica(newReplicaMessage.getId(), new AcceptedMessage(replica.getId()));
+                    int thatId = ((NewReplicaMessage) message).getId();
+                    sendMessageToReplica(thatId, new AcceptedMessage(replica.getId()));
+                    if (!support.isReplicaAccepted(thatId)) {
+                        sendMessageToReplica(thatId, new NewReplicaMessage(replica.getId()));
+                    }
                 } else if (message instanceof AcceptedMessage) {
                     AcceptedMessage acceptedMessage = (AcceptedMessage) message;
                     server.setAccepted(acceptedMessage.getId());
@@ -76,7 +79,7 @@ class Processor implements Runnable {
                 if (status == Replica.Status.NORMAL || status == Replica.Status.VIEW_CHANGE) {
                     // 1. this view primary is not connected (thus it is not responding),
                     // new view number is the next one
-                    if (!replica.isPrimary() && !support.isPrimaryConnected()) {
+                    if (!replica.isPrimary() && !support.isReplicaAccepted(replica.getPrimaryId())) {
                         support.setStatus(Replica.Status.VIEW_CHANGE, replica.getViewNumber() + 1);
                         continue;
                     // 2. StartViewChange or DoViewChange message is received
@@ -330,6 +333,20 @@ class Processor implements Runnable {
         }
     }
 
+    private void broadcastMessageToUnAnsweredReplicas(Message message, List<Boolean> answered)
+            throws InterruptedException {
+        for (int i = 0, j = 0; i < replica.getReplicaNumber(); i++) {
+            if (i == replica.getId()) {
+                continue;
+            }
+
+            if (!answered.get(i)) {
+                putToQueue(serverOuts.get(j), message);
+            }
+            j++;
+        }
+    }
+
     private void putToQueue(BlockingDeque<Message> deque, Message message) throws InterruptedException {
         if (deque.peek() != message) {
             deque.put(message);
@@ -349,7 +366,11 @@ class Processor implements Runnable {
         if (waitingMessages != null) {
             for (Map.Entry<Integer, Message> waitingMessage : waitingMessages) {
                 if (waitingMessage.getKey() == -1) {
-                    broadcastMessageToReplicas(waitingMessage.getValue());
+                    if (waitingMessage.getValue() instanceof NewReplicaMessage) {
+                        broadcastMessageToUnAnsweredReplicas(waitingMessage.getValue(), support.getAcceptedList());
+                    } else {
+                        broadcastMessageToReplicas(waitingMessage.getValue());
+                    }
                 } else {
                     sendMessageToReplica(waitingMessage.getKey(), waitingMessage.getValue());
                 }

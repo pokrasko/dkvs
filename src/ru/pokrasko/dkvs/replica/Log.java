@@ -18,12 +18,24 @@ public class Log {
         this.list = list;
     }
 
+//    public List<Request<?, ?>> getList() {
+//        return list;
+//    }
+
     public int size() {
         return list.size();
     }
 
     public Request<?, ?> get(int index) {
         return list.get(index - 1);
+    }
+
+    public Log getAfter(int after) {
+        return new Log(list.subList(Math.max(after, 0), list.size()));
+    }
+
+    public Log getSuffix(int size) {
+        return new Log(list.subList(Math.max(list.size() - size, 0), list.size()));
     }
 
     void add(Request<?, ?> request) {
@@ -34,12 +46,8 @@ public class Log {
         list.addAll(toAdd.list.subList(toAdd.list.size() + until - after, toAdd.list.size()));
     }
 
-    public Log getAfter(int after) {
-        return new Log(list.subList(Math.max(after, 0), list.size()));
-    }
-
-    public Log getSuffix(int size) {
-        return new Log(list.subList(Math.max(list.size() - size, 0), list.size()));
+    void cut(int newOpNumber) {
+        list = list.subList(0, newOpNumber);
     }
 
     @Override
