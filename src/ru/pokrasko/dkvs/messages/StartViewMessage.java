@@ -5,9 +5,14 @@ import ru.pokrasko.dkvs.replica.Log;
 import java.util.Arrays;
 import java.util.List;
 
-public class StartViewMessage extends LogMessage {
+public class StartViewMessage extends LogMessage implements ProtocolMessage {
     public StartViewMessage(Integer viewNumber, Log log, Integer opNumber, Integer commitNumber) {
         super("StartView", viewNumber, log, opNumber, commitNumber);
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.VIEW_CHANGE;
     }
 
     @Override

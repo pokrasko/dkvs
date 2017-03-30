@@ -15,12 +15,12 @@ public class Log {
     }
 
     public Log(List<Request<?, ?>> list) {
-        this.list = list;
+        this.list = new ArrayList<>(list);
     }
 
-//    public List<Request<?, ?>> getList() {
-//        return list;
-//    }
+    public List<Request<?, ?>> getList() {
+        return list;
+    }
 
     public int size() {
         return list.size();
@@ -43,7 +43,7 @@ public class Log {
     }
 
     void addAll(Log toAdd, int after, int until) {
-        list.addAll(toAdd.list.subList(toAdd.list.size() + until - after, toAdd.list.size()));
+        list.addAll(toAdd.list.subList(toAdd.list.size() - (until - after), toAdd.list.size()));
     }
 
     void cut(int newOpNumber) {
@@ -64,6 +64,10 @@ public class Log {
 
         @Override
         public Log parse(String line) {
+            if (line.trim().isEmpty()) {
+                return new Log();
+            }
+
             init(line);
 
             List<Request<?, ?>> list = new ArrayList<>();

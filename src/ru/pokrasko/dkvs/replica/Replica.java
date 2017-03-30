@@ -31,7 +31,7 @@ public class Replica extends SafeRunnable {
         this.id = id;
 
         if (recoveryLog != null) {
-            this.commitNumber = this.opNumber = recoveryLog.size();
+            this.opNumber = recoveryLog.size();
             this.log = recoveryLog;
         } else {
             this.log = new Log();
@@ -139,7 +139,7 @@ public class Replica extends SafeRunnable {
     }
 
     public void updateLog(Log log, int opNumber) {
-        log.addAll(log, this.commitNumber, opNumber);
+        this.log.addAll(log, this.commitNumber, opNumber);
         this.opNumber = opNumber;
     }
 }

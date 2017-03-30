@@ -71,11 +71,9 @@ class Receiver extends SafeRunnable {
                         if (message == null) {
                             System.err.println("Wrong message received from " + serverOrClient() + " #" + (thatId + 1)
                                     + ": " + line);
-                        } else {
-                            if (!(message instanceof PingMessage)) {
-                                System.out.println("Received message from " + serverOrClient() + " #" + (thatId + 1)
+                        } else if (!(message instanceof PingMessage)) {
+                            System.out.println("Received message from " + serverOrClient() + " #" + (thatId + 1)
                                         + ": " + message);
-                            }
                             if (message instanceof AcceptedMessage) {
                                 ((AcceptedMessage) message).setId(thatId);
                             }

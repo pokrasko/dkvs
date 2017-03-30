@@ -5,7 +5,7 @@ import ru.pokrasko.dkvs.service.Result;
 import java.util.Arrays;
 import java.util.List;
 
-public class ReplyMessage extends ViewNumberMessage {
+public class ReplyMessage extends ViewNumberMessage implements ProtocolMessage {
     private int requestNumber;
     private Result<?> result;
 
@@ -21,6 +21,11 @@ public class ReplyMessage extends ViewNumberMessage {
 
     public Result<?> getResult() {
         return result;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.NORMAL;
     }
 
     @Override

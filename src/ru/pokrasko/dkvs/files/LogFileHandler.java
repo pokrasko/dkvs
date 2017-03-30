@@ -25,7 +25,7 @@ public class LogFileHandler {
     public LogFileHandler(File logFile, boolean isRecovering) throws IOException {
         this.logFile = logFile;
         this.parser = isRecovering ? new LogFileParser() : null;
-        this.out = new PrintWriter(new FileWriter(logFile, isRecovering));
+        this.out = new PrintWriter(new FileWriter(logFile, isRecovering), true);
     }
 
     public Log readLog() {
@@ -79,7 +79,13 @@ public class LogFileHandler {
                     break;
                 }
 
-                Request<?, ?> request = requestParser.parse(line);
+                line = line.trim();
+                if (!line.startsWith("{") || !line.endsWith("}")) {
+                    System.err.println("Every line should take form \"{ ... }\", but this one doesn't: \""
+                            + line + "\"");
+                    continue;
+                }
+                Request<?, ?> request = requestParser.parse(line.substring(1, line.length() - 1));
                 if (request != null) {
                     log.add(request);
                 }

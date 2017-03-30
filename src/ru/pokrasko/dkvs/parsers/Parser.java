@@ -19,6 +19,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
+        }
         tokenBegin = curIndex;
 
         boolean isNegative = false;
@@ -55,6 +58,9 @@ abstract class Parser {
         }
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
+        }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
         }
         tokenBegin = curIndex;
 
@@ -93,6 +99,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
+        }
         tokenBegin = curIndex;
 
         if (!Character.isDigit(currentChar())) {
@@ -121,6 +130,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
+        }
         tokenBegin = curIndex;
 
         if (!Character.isAlphabetic(currentChar())) {
@@ -144,6 +156,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
+        }
         tokenBegin = curIndex;
 
         int begin = curIndex;
@@ -164,6 +179,9 @@ abstract class Parser {
         while (curIndex < line.length() && Character.isWhitespace(currentChar())) {
             curIndex++;
         }
+        if (curIndex == line.length()) {
+            throw new ParseException("reached end of string", curIndex);
+        }
         tokenBegin = curIndex;
 
         int delimiterIndex = line.indexOf("" + delimiter, curIndex);
@@ -180,9 +198,9 @@ abstract class Parser {
             curIndex++;
         }
         if (curIndex == line.length()) {
-            throw new ParseException("(reached end of string)", curIndex);
+            throw new ParseException("reached end of string", curIndex);
         } else if (currentChar() != expected) {
-            throw new ParseException("(expected '" + expected + "', but got '" + currentChar() + "'", curIndex);
+            throw new ParseException("expected '" + expected + "', but got '" + currentChar() + "'", curIndex);
         }
         curIndex++;
     }

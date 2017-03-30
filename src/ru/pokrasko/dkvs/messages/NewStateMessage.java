@@ -5,9 +5,14 @@ import ru.pokrasko.dkvs.replica.Log;
 import java.util.Arrays;
 import java.util.List;
 
-public class NewStateMessage extends LogMessage {
+public class NewStateMessage extends LogMessage implements ProtocolMessage {
     public NewStateMessage(Integer viewNumber, Log log, Integer opNumber, Integer commitNumber) {
         super("NewState", viewNumber, log, opNumber, commitNumber);
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.STATE_TRANSFER;
     }
 
     @Override

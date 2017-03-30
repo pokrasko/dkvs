@@ -1,12 +1,11 @@
 package ru.pokrasko.dkvs.messages;
 
-import ru.pokrasko.dkvs.service.Operation;
 import ru.pokrasko.dkvs.replica.Request;
 
 import java.util.Collections;
 import java.util.List;
 
-public class RequestMessage extends Message {
+public class RequestMessage extends Message implements ProtocolMessage {
     private Request<?, ?> request;
 
     public RequestMessage(Request<?, ?> request) {
@@ -18,8 +17,9 @@ public class RequestMessage extends Message {
         return request;
     }
 
-    public Operation<?, ?> getOperation() {
-        return request.getOperation();
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.NORMAL;
     }
 
     @Override

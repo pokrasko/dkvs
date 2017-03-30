@@ -108,6 +108,7 @@ public class MessageParser extends LineParser {
         }
 
         List<Object> arguments = new LinkedList<>();
+        parse_loop:
         for (Parsable.Token token : tokens) {
             try {
                 String word = null;
@@ -143,7 +144,19 @@ public class MessageParser extends LineParser {
                     case OBJECT: {
                         Class<?> objectClass = (Class<?>) token.value;
                         if (objectClass == Log.class) {
-                            readChar('[');
+                            try {
+                                readChar('[');
+                            } catch (ParseException e) {
+                                if (messageType == RecoveryResponseMessage.class
+                                        && e.getMessage().equals("reached end of string")) {
+                                    arguments.add(null);
+                                    arguments.add(0);
+                                    arguments.add(0);
+                                    break parse_loop;
+                                } else {
+                                    throw e;
+                                }
+                            }
                             arguments.add(new Log.LogParser().parse(parseWordToDelimiter(']')));
                             readChar(']');
                         } else if (objectClass == Request.class) {

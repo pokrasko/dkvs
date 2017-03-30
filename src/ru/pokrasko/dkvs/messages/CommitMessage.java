@@ -3,9 +3,14 @@ package ru.pokrasko.dkvs.messages;
 import java.util.Arrays;
 import java.util.List;
 
-public class CommitMessage extends CommitNumberMessage {
+public class CommitMessage extends CommitNumberMessage implements ProtocolMessage {
     public CommitMessage(Integer viewNumber, Integer commitNumber) {
         super("Commit", viewNumber, commitNumber);
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.NORMAL;
     }
 
     @Override

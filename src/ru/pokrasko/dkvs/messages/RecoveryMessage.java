@@ -1,9 +1,10 @@
 package ru.pokrasko.dkvs.messages;
 
+
 import java.util.Arrays;
 import java.util.List;
 
-public class RecoveryMessage extends Message {
+public class RecoveryMessage extends Message implements ProtocolMessage {
     private int replicaId;
     private long nonce;
     private int opNumber;
@@ -32,6 +33,11 @@ public class RecoveryMessage extends Message {
 
     public int getOpNumber() {
         return opNumber;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.RECOVERY;
     }
 
     @Override

@@ -148,14 +148,13 @@ class Support extends SafeRunnable {
     private void startReplica() {
         if (replica.getOpNumber() == 0) {
             // Starting the replica from scratch: setting status to NORMAL
-            waiting = null;
             setStatus(Replica.Status.NORMAL, 0);
         } else {
             // Recovering the replica, last known operation number is recoveryOpNumber,
             // setting status to RECOVERY, broadcasting Recovery message
-            RecoveryMessage recoveryMessage = new RecoveryMessage(replica.getId(), replica.getCommitNumber());
-            recoveryNonce = recoveryMessage.getNonce();
-            waiting = new SimpleWaiting(recoveryMessage, true, 0L, timeout / 2);
+            for (int i = 1; i <= replica.getOpNumber(); i++) {
+                service.commit(replica.getRequestToCommit());
+            }
             setStatus(Replica.Status.RECOVERY, 0);
         }
 
@@ -187,8 +186,9 @@ class Support extends SafeRunnable {
             }
             vcSecondStage = false;
         } else {
-            waiting = new SimpleWaiting(new RecoveryMessage(replica.getId(), replica.getOpNumber()),
-                    true, 0L, timeout / 2);
+            RecoveryMessage message = new RecoveryMessage(replica.getId(), replica.getCommitNumber());
+            recoveryNonce = message.getNonce();
+            waiting = new SimpleWaiting(message, true, 0L, timeout / 2);
             quorum = new RecoveryResponseQuorum(replica.getIncludingQuorumNumber(), replica.getReplicaNumber());
         }
     }
@@ -239,6 +239,7 @@ class Support extends SafeRunnable {
 
     void checkStartViewChangeQuorum(int replicaId) {
         if (!vcSecondStage && startViewChangeQuorum.check(replicaId)) {
+            vcSecondStage = true;
             waiting = new SimpleWaiting(new DoViewChangeMessage(replica.getViewNumber(),
                     replica.getLog().getSuffix(DoViewChangeMessage.VIEW_CHANGE_LOG_SUFFIX_SIZE),
                     replica.getLastNormalViewNumber(),

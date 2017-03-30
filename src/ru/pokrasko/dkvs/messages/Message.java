@@ -25,7 +25,7 @@ public abstract class Message implements Parsable {
             return null;
         }
         for (int i = 0; i < data.length; i++) {
-            if (!classes[i].isAssignableFrom(data[i].getClass())) {
+            if (data[i] != null && !classes[i].isAssignableFrom(data[i].getClass())) {
                 System.err.println("Message construct: invalid argument #" + (i + 1)
                         + ", should be of type " + classes[i].getName() + ", but is of type " + data[i].getClass());
                 return null;

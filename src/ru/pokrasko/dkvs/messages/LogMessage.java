@@ -8,7 +8,7 @@ abstract class LogMessage extends CommitNumberMessage {
 
     LogMessage(String type, int viewNumber, Log log, int opNumber, int commitNumber) {
         super(type, viewNumber, commitNumber);
-        this.log = log;
+        this.log = log != null ? new Log(log.getList()) : null;
         this.opNumber = opNumber;
     }
 

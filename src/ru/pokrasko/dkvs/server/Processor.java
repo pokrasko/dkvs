@@ -18,7 +18,6 @@ class Processor implements Runnable {
 
     private BlockingQueue<Message> in;
     private List<BlockingDeque<Message>> serverOuts;
-    private BlockingDeque<Message> thisOut;
     private ConcurrentMap<Integer, BlockingQueue<Message>> clientOuts;
     private int timeout;
 
@@ -38,8 +37,6 @@ class Processor implements Runnable {
 
         this.replica = support.getReplica();
         this.support = support;
-
-        this.thisOut = serverOuts.get(replica.getId());
     }
 
     @Override
@@ -75,40 +72,45 @@ class Processor implements Runnable {
                 }
                 Replica.Status status = replica.getStatus();
 
-                // View change is started when:
-                if (status == Replica.Status.NORMAL || status == Replica.Status.VIEW_CHANGE) {
-                    // 1. this view primary is not connected (thus it is not responding),
+                try {
+                    // View change is started if this view primary is not connected (thus it is not responding),
                     // new view number is the next one
                     if (!replica.isPrimary() && !support.isReplicaAccepted(replica.getPrimaryId())) {
                         support.setStatus(Replica.Status.VIEW_CHANGE, replica.getViewNumber() + 1);
                         continue;
-                    // 2. StartViewChange or DoViewChange message is received
-                    // and its view number is larger than this one's,
-                    // new view number is got from the message
-                    } else if (message instanceof StartViewChangeMessage || message instanceof DoViewChangeMessage) {
-                        int viewNumber = ((ViewNumberMessage) message).getViewNumber();
-                        if (viewNumber > replica.getViewNumber()) {
-                            support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
-                            continue;
+                    }
+
+                    if (!(message instanceof ProtocolMessage)) {
+                        continue;
+                    }
+
+                    // If there is running state transfer, the replica handles only NewState messages
+                    if (support.getStateTransferState() == Support.STState.UPGRADE) {
+                        if (message instanceof NewStateMessage) {
+                            NewStateMessage newStateMessage = (NewStateMessage) message;
+                            if (newStateMessage.getViewNumber() < replica.getViewNumber()
+                                    || newStateMessage.getOpNumber() < replica.getOpNumber()) {
+                                continue;
+                            }
+
+                            support.setStatus(replica.getStatus(), newStateMessage.getViewNumber());
                         }
                     }
-                }
 
-                // If there is running state transfer, the replica handles only NewState messages
-                if (support.getStateTransferState() == Support.STState.UPGRADE) {
-                    if (message instanceof NewStateMessage) {
-                        NewStateMessage newStateMessage = (NewStateMessage) message;
-                        if (newStateMessage.getViewNumber() < replica.getViewNumber()
-                                || newStateMessage.getOpNumber() < replica.getOpNumber()) {
-                            continue;
+                    // View change is started when:
+                    if (status == Replica.Status.NORMAL || status == Replica.Status.VIEW_CHANGE) {
+                        // If StartViewChange or DoViewChange message is received
+                        // and its view number is larger than this one's, view change is also started and
+                        // new view number is got from the message
+                        if (message instanceof StartViewChangeMessage || message instanceof DoViewChangeMessage) {
+                            int viewNumber = ((ViewNumberMessage) message).getViewNumber();
+                            if (viewNumber > replica.getViewNumber()) {
+                                support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
+                                continue;
+                            }
                         }
-
-                        support.setStatus(replica.getStatus(), newStateMessage.getViewNumber());
-
                     }
-                }
 
-                try {
                     // If the replica is in normal status, then messages of all protocols are handled
                     if (status == Replica.Status.NORMAL) {
                         // RECOVERY PROTOCOL (IN NORMAL STATUS)
@@ -117,36 +119,35 @@ class Processor implements Runnable {
                             sendMessageToReplica(recoveryMessage.getReplicaId(),
                                     new RecoveryResponseMessage(replica.getViewNumber(),
                                             recoveryMessage.getNonce(),
+                                            replica.getId(),
                                             replica.isPrimary()
                                                     ? replica.getLog().getAfter(recoveryMessage.getOpNumber())
                                                     : null,
                                             replica.getOpNumber(),
-                                            replica.getCommitNumber(),
-                                            replica.getId()));
+                                            replica.getCommitNumber()));
+                        } else if (((ProtocolMessage) message).getProtocol() == ProtocolMessage.Protocol.RECOVERY) {
+                            continue;
                         }
 
                         // VIEW CHANGE PROTOCOL (IN NORMAL STATUS)
                         // If a view change protocol message is received
                         // and its view number is larger than this one's
                         // then this replica's view number is updated
-                        // and status is changed to normal (if a StartView is received) or view change (otherwise)
-                        if (message instanceof StartViewChangeMessage || message instanceof DoViewChangeMessage
-                                || message instanceof StartViewMessage) {
+                        // and status is changed to normal (if a StartView is received)
+                        if (message instanceof StartViewMessage) {
                             int viewNumber = ((ViewNumberMessage) message).getViewNumber();
                             if (viewNumber <= replica.getViewNumber()) {
                                 continue;
                             }
 
-                            if (message instanceof StartViewMessage) {
-                                StartViewMessage startViewMessage = (StartViewMessage) message;
-                                handleNewView(viewNumber,
-                                        startViewMessage.getLog(),
-                                        startViewMessage.getOpNumber(),
-                                        startViewMessage.getCommitNumber(),
-                                        replica.getNewPrimaryId(viewNumber));
-                            } else {
-                                support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
-                            }
+                            StartViewMessage startViewMessage = (StartViewMessage) message;
+                            handleNewView(viewNumber,
+                                    startViewMessage.getLog(),
+                                    startViewMessage.getOpNumber(),
+                                    startViewMessage.getCommitNumber(),
+                                    replica.getNewPrimaryId(viewNumber));
+                        } else if (((ProtocolMessage) message).getProtocol() == ProtocolMessage.Protocol.VIEW_CHANGE) {
+                            continue;
                         }
 
                         // NORMAL PROTOCOL
@@ -164,6 +165,10 @@ class Processor implements Runnable {
                         }
 
                         // A primary handles Request and PrepareOk normal protocol messages
+                        if (((ProtocolMessage) message).getProtocol() != ProtocolMessage.Protocol.NORMAL) {
+                            continue;
+                        }
+
                         if (replica.isPrimary()) {
                             if (message instanceof RequestMessage) {
                                 Request<?, ?> request = ((RequestMessage) message).getRequest();
@@ -192,13 +197,15 @@ class Processor implements Runnable {
                                         commit(i);
                                     }
                                 }
-//                            } else {
-//                                handleWrongMessage(message, status);
+                            } else {
+                                handleWrongMessage(message, status, replica.getViewNumber());
                             }
                             // A backup handles Prepare and Commit messages
                         } else {
-                            if (!(message instanceof PrepareMessage || message instanceof CommitMessage)) {
-//                                handleWrongMessage(message, status);
+                            if (!(message instanceof CommitNumberMessage)) {
+                                if (!(message instanceof RequestMessage)) {
+                                    handleWrongMessage(message, status, replica.getViewNumber());
+                                }
                                 continue;
                             }
 
@@ -228,13 +235,11 @@ class Processor implements Runnable {
 
                         // If the replica is in view change status, then only view change protocol messages are handled
                     } else if (status == Replica.Status.VIEW_CHANGE) {
-                        // VIEW CHANGE PROTOCOL (IN VIEW CHANGE STATUS)
-                        if (!(message instanceof StartViewChangeMessage || message instanceof DoViewChangeMessage
-                                || message instanceof StartViewMessage)) {
-//                            handleWrongMessage(message, status);
+                        if (((ProtocolMessage) message).getProtocol() != ProtocolMessage.Protocol.VIEW_CHANGE) {
                             continue;
                         }
 
+                        // VIEW CHANGE PROTOCOL (IN VIEW CHANGE STATUS)
                         int viewNumber = ((ViewNumberMessage) message).getViewNumber();
                         if (viewNumber > replica.getViewNumber()) {
                             if (message instanceof StartViewMessage) {
@@ -244,8 +249,6 @@ class Processor implements Runnable {
                                         startViewMessage.getOpNumber(),
                                         startViewMessage.getCommitNumber(),
                                         replica.getNewPrimaryId(viewNumber));
-                            } else {
-                                support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
                             }
                         } else if (viewNumber == replica.getViewNumber()) {
                             if (message instanceof StartViewChangeMessage) {
@@ -271,8 +274,8 @@ class Processor implements Runnable {
                                                     replica.getCommitNumber()));
                                         }
                                     }
-//                                } else {
-//                                    handleWrongMessage(message, status);
+                                } else {
+                                    handleWrongMessage(message, status, replica.getViewNumber());
                                 }
                             } else {
                                 StartViewMessage startViewMessage = (StartViewMessage) message;
@@ -286,12 +289,12 @@ class Processor implements Runnable {
 
                         // If the replica is in recovery status, then only recovery protocol messages are handled
                     } else {
-                        // RECOVERY PROTOCOL (IN RECOVERY STATUS)
-                        if (!(message instanceof RecoveryResponseMessage)) {
-//                            handleWrongMessage(message, status);
+                        if (((ProtocolMessage) message).getProtocol() != ProtocolMessage.Protocol.RECOVERY
+                                || message instanceof RecoveryMessage) {
                             continue;
                         }
 
+                        // RECOVERY PROTOCOL (IN RECOVERY STATUS)
                         RecoveryResponseMessage recoveryResponseMessage = (RecoveryResponseMessage) message;
                         if (recoveryResponseMessage.getNonce() != support.getRecoveryNonce()) {
                             continue;
@@ -304,6 +307,7 @@ class Processor implements Runnable {
                                 recoveryResponseMessage.getCommitNumber());
                         if (vlnkData != null) {
                             recovery(vlnkData);
+                            System.out.println("The replica recovered");
                         }
                     }
                 } finally {
@@ -326,24 +330,20 @@ class Processor implements Runnable {
 
     private void broadcastMessageToReplicas(Message message) throws InterruptedException {
         for (BlockingDeque<Message> queue : serverOuts) {
-            if (queue.equals(thisOut)) {
-                continue;
-            }
             putToQueue(queue, message);
         }
     }
 
     private void broadcastMessageToUnAnsweredReplicas(Message message, List<Boolean> answered)
             throws InterruptedException {
-        for (int i = 0, j = 0; i < replica.getReplicaNumber(); i++) {
+        for (int i = 0; i < replica.getReplicaNumber(); i++) {
             if (i == replica.getId()) {
                 continue;
             }
 
             if (!answered.get(i)) {
-                putToQueue(serverOuts.get(j), message);
+                putToQueue(serverOuts.get(i), message);
             }
-            j++;
         }
     }
 
@@ -416,12 +416,12 @@ class Processor implements Runnable {
 
         replica.updateLog(vlnkData.getLog(), vlnkData.getOpNumber());
         for (int i = replica.getCommitNumber() + 1; i <= vlnkData.getCommitNumber(); i++) {
-            commit(i);
+            support.commit(i);
         }
     }
 
-//    private void handleWrongMessage(Message message, Replica.Status status) {
-//        System.out.println("Ignoring message \"" + message + "\" in status " + status
-//                + ", is this primary: " + replica.isPrimary());
-//    }
+    private void handleWrongMessage(Message message, Replica.Status status, int viewNumber) {
+        System.out.println("Ignoring message \"" + message + "\" in status " + status
+                + ", view #" + viewNumber + ", is this primary: " + replica.isPrimary());
+    }
 }

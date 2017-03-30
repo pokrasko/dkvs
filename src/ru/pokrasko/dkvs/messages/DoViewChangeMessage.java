@@ -5,7 +5,7 @@ import ru.pokrasko.dkvs.replica.Log;
 import java.util.Arrays;
 import java.util.List;
 
-public class DoViewChangeMessage extends LogMessage {
+public class DoViewChangeMessage extends LogMessage implements ProtocolMessage {
     public static final int VIEW_CHANGE_LOG_SUFFIX_SIZE = 3;
 
     private int lastNormalViewNumber;
@@ -24,6 +24,11 @@ public class DoViewChangeMessage extends LogMessage {
 
     public int getReplicaId() {
         return replicaId;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.VIEW_CHANGE;
     }
 
     public static List<Token> tokens() {

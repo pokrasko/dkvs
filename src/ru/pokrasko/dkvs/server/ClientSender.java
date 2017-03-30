@@ -32,6 +32,7 @@ class ClientSender extends SafeRunnable {
             try {
                 socket.close();
             } catch (IOException ignored) {}
+            System.err.println("%% PrintWriter");
             throw e;
         }
 

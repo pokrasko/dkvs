@@ -97,6 +97,7 @@ class Connector extends SafeRunnable {
             try {
                 writer.println("Server " + thisId);
                 server.setConnectedOut(thatId);
+                queue.clear();
 
                 while (isRunning() && !writer.checkError()) {
                     Message message = queue.poll(timeout / 2, TimeUnit.MILLISECONDS);

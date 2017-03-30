@@ -1,9 +1,10 @@
 package ru.pokrasko.dkvs.messages;
 
+
 import java.util.Arrays;
 import java.util.List;
 
-public class StartViewChangeMessage extends ViewNumberMessage {
+public class StartViewChangeMessage extends ViewNumberMessage implements ProtocolMessage {
     private int replicaId;
 
     public StartViewChangeMessage(Integer viewNumber, Integer replicaId) {
@@ -13,6 +14,11 @@ public class StartViewChangeMessage extends ViewNumberMessage {
 
     public int getReplicaId() {
         return replicaId;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.VIEW_CHANGE;
     }
 
     @Override

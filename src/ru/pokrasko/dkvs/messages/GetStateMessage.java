@@ -3,7 +3,7 @@ package ru.pokrasko.dkvs.messages;
 import java.util.Arrays;
 import java.util.List;
 
-public class GetStateMessage extends ViewNumberMessage {
+public class GetStateMessage extends ViewNumberMessage implements ProtocolMessage {
     private int opNumber;
     private int replicaId;
 
@@ -19,6 +19,11 @@ public class GetStateMessage extends ViewNumberMessage {
 
     public int getReplicaId() {
         return replicaId;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.STATE_TRANSFER;
     }
 
     @Override

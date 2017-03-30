@@ -5,7 +5,7 @@ import ru.pokrasko.dkvs.replica.Request;
 import java.util.Arrays;
 import java.util.List;
 
-public class PrepareMessage extends CommitNumberMessage {
+public class PrepareMessage extends CommitNumberMessage implements ProtocolMessage {
     private Request<?, ?> request;
     private int opNumber;
 
@@ -21,6 +21,11 @@ public class PrepareMessage extends CommitNumberMessage {
 
     public int getOpNumber() {
         return opNumber;
+    }
+
+    @Override
+    public Protocol getProtocol() {
+        return Protocol.NORMAL;
     }
 
     @Override
