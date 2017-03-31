@@ -98,6 +98,13 @@ class Support extends SafeRunnable {
         }
     }
 
+    void gotNeeded(int opNumber) {
+        if (((StateTransferUpdateWaiting) waiting).gotNeeded(opNumber)) {
+            stateTransferState = STState.NO;
+            waiting = null;
+        }
+    }
+
     void startStateTransferUpgrade(int responder) {
         stateTransferState = STState.UPGRADE;
         waiting = new StateTransferWaiting(new GetStateMessage(replica.getViewNumber(),
@@ -105,11 +112,8 @@ class Support extends SafeRunnable {
                 replica.getId()), responder, 0L, timeout / 2);
     }
 
-    void gotNeeded(int opNumber) {
-        if (((StateTransferUpdateWaiting) waiting).gotNeeded(opNumber)) {
-            stateTransferState = STState.NO;
-            waiting = null;
-        }
+    void finishStateTransfer() {
+        stateTransferState = STState.NO;
     }
 
     void startIdentification(int id) {

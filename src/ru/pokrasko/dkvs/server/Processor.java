@@ -91,7 +91,12 @@ class Processor implements Runnable {
                                 continue;
                             }
 
+                            support.finishStateTransfer();
+                            updateLogAndCommit(newStateMessage.getLog(),
+                                    newStateMessage.getOpNumber(),
+                                    newStateMessage.getCommitNumber());
                             support.setStatus(replica.getStatus(), newStateMessage.getViewNumber());
+                            continue;
                         }
                     }
 
@@ -106,6 +111,22 @@ class Processor implements Runnable {
                                 support.setStatus(Replica.Status.VIEW_CHANGE, viewNumber);
                                 continue;
                             }
+                        }
+
+                        // STATE TRANSFER RECEIVING
+                        if (message instanceof NewStateMessage
+                                && support.getStateTransferState() == Support.STState.UPDATE) {
+                            NewStateMessage newStateMessage = (NewStateMessage) message;
+                            if (newStateMessage.getViewNumber() < replica.getViewNumber()
+                                    || newStateMessage.getOpNumber() < replica.getOpNumber()) {
+                                continue;
+                            }
+
+                            support.finishStateTransfer();
+                            updateLogAndCommit(newStateMessage.getLog(),
+                                    newStateMessage.getOpNumber(),
+                                    newStateMessage.getCommitNumber());
+                            continue;
                         }
                     }
 
@@ -146,6 +167,20 @@ class Processor implements Runnable {
                                     replica.getNewPrimaryId(viewNumber));
                         } else if (((ProtocolMessage) message).getProtocol() == ProtocolMessage.Protocol.VIEW_CHANGE) {
                             continue;
+                        }
+
+                        // STATE TRANSFER RESPONSE
+                        if (message instanceof GetStateMessage) {
+                            GetStateMessage getStateMessage = (GetStateMessage) message;
+                            if (getStateMessage.getViewNumber() != replica.getViewNumber()) {
+                                continue;
+                            }
+
+                            sendMessageToReplica(getStateMessage.getReplicaId(),
+                                    new NewStateMessage(replica.getViewNumber(),
+                                            replica.getLog().getAfter(getStateMessage.getOpNumber()),
+                                            replica.getOpNumber(),
+                                            replica.getCommitNumber()));
                         }
 
                         // NORMAL PROTOCOL
@@ -387,7 +422,7 @@ class Processor implements Runnable {
     private void commit(int opNumber) throws InterruptedException {
         support.commit(opNumber);
         Request<?, ?> request = replica.getRequestByOpNumber(opNumber);
-        if (!replica.isRequestOld(request)) {
+        if (replica.isPrimary() && !replica.isRequestOld(request)) {
             sendMessageToClient(request.getClientId(),
                     new ReplyMessage(replica.getViewNumber(),
                             request.getRequestNumber(),
@@ -403,10 +438,7 @@ class Processor implements Runnable {
             support.startStateTransferUpgrade(stReceiverId);
             return false;
         } else {
-            replica.updateLog(log, opNumber);
-            for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
-                commit(i);
-            }
+            updateLogAndCommit(log, opNumber, commitNumber);
             return true;
         }
     }
@@ -415,11 +447,7 @@ class Processor implements Runnable {
         assert vlnkData.getOpNumber() - replica.getCommitNumber() == vlnkData.getLog().size();
 
         support.setStatus(Replica.Status.NORMAL, vlnkData.getViewNumber());
-
-        replica.updateLog(vlnkData.getLog(), vlnkData.getOpNumber());
-        for (int i = replica.getCommitNumber() + 1; i <= vlnkData.getCommitNumber(); i++) {
-            support.commit(i);
-        }
+        updateLogAndCommit(vlnkData.getLog(), vlnkData.getOpNumber(), vlnkData.getCommitNumber());
     }
 
     private void handleWrongMessage(Message message, Replica.Status status, int viewNumber) {
@@ -435,6 +463,13 @@ class Processor implements Runnable {
             return false;
         } else {
             return true;
+        }
+    }
+
+    private void updateLogAndCommit(Log log, int opNumber, int commitNumber) throws InterruptedException {
+        replica.updateLog(log, opNumber);
+        for (int i = replica.getCommitNumber() + 1; i <= commitNumber; i++) {
+            commit(i);
         }
     }
 }
