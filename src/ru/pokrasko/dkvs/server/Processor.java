@@ -73,10 +73,8 @@ class Processor implements Runnable {
                 Replica.Status status = replica.getStatus();
 
                 try {
-                    // View change is started if this view primary is not connected (thus it is not responding),
-                    // new view number is the next one
-                    if (!replica.isPrimary() && !support.isReplicaAccepted(replica.getPrimaryId())) {
-                        support.setStatus(Replica.Status.VIEW_CHANGE, replica.getViewNumber() + 1);
+                    // Checking this view primary for a response (if there is no one, starting view change)
+                    if (!checkPrimaryForResponse()) {
                         continue;
                     }
 
@@ -379,6 +377,10 @@ class Processor implements Runnable {
     }
 
     private void handleNullMessage() throws InterruptedException {
+        // The only sender to a backup in normal protocol is a primary, so the primary is likely off
+        if (replica.isRunning()) {
+            checkPrimaryForResponse();
+        }
         resendWaitingMessages();
     }
 
@@ -423,5 +425,16 @@ class Processor implements Runnable {
     private void handleWrongMessage(Message message, Replica.Status status, int viewNumber) {
         System.out.println("Ignoring message \"" + message + "\" in status " + status
                 + ", view #" + viewNumber + ", is this primary: " + replica.isPrimary());
+    }
+
+    private boolean checkPrimaryForResponse() {
+        // View change is started if this view primary is not connected (thus it is not responding),
+        // new view number is the next one
+        if (!replica.isPrimary() && !support.isReplicaAccepted(replica.getPrimaryId())) {
+            support.setStatus(Replica.Status.VIEW_CHANGE, replica.getViewNumber() + 1);
+            return false;
+        } else {
+            return true;
+        }
     }
 }
